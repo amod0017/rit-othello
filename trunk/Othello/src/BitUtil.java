@@ -26,7 +26,7 @@ public class BitUtil {
 	 */
 	static byte ulog2 (long val) {
 		byte k = 0;
-		if(val - 0x00000000FFFFFFFFL > 0) {val>>=32; k = 32;}
+		if(val - 0x00000000FFFFFFFFL > 0) {val>>>=32; k = 32;}
 		if(val > 0x000000000000FFFFL) {val>>=16; k|= 16;}
 		if(val > 0x00000000000000FFL) {val>>= 8; k|=  8;}
 		k |= LOG2LOOKUP[(byte)val];
