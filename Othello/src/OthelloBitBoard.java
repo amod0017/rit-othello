@@ -34,8 +34,8 @@ public class OthelloBitBoard implements OthelloBoard {
 		
 		return x;
 	}
-	
-	static long mapC1toR1(long x) {
+	/*
+	static byte mapC1toR1(long x) {
 		x = (x & 0x0000000001010101L) | ((x >> 28) & 0x1010101000000000L);
 		
 		long y = (x & 0x0000000011110000L);
@@ -46,7 +46,40 @@ public class OthelloBitBoard implements OthelloBoard {
 		x ^= y;
 		x = y >> 7;
 		
-		return x;
+		return (byte)x;
+	}*/
+	
+	private static int mapC1toR1(long x) {
+		x &= 0x0101010101010101L;
+		x |= x >> 28;
+		x |= x >> 14;
+		x |= x >> 7;
+		
+		return (int)x;
+	}
+	
+	private static int mapDiagToR1(long x) {
+		x &= 0x8040201008040201L;
+		x |= x >> 32;
+		x |= x >> 16;
+		x |= x >> 8;
+		return (int)x;
+	}
+	
+	private static long mapR1toC1(int x) {
+		x |= (x & 0xAA) << 7;
+		x |= (x & 0x4444) << 14;
+		long z = (long)x | ((long)(x & 0x10101010) << 28);
+		
+		return z & 0x0101010101010101L;
+	}
+	
+	private static long mapR1toDiag(int x) {
+		x |= (x & 0xAA) << 8;
+		x |= (x & 0x8844) << 16;
+		long z = (long)x | ((long)(x & 0x80402010) << 32);
+		
+		return z & 0x8040201008040201L;
 	}
 	
 	@Override
@@ -79,13 +112,97 @@ public class OthelloBitBoard implements OthelloBoard {
 
 	@Override
 	public void makeMove(int x, int y, int state) {
+		long cColor;
+		long eColor;
 		
+		if (state == WHITE) {
+			cColor = white;
+			eColor = black;
+		} else {
+			cColor = black;
+			eColor = white;
+		}
+		
+		int cRow;
+		int eRow;
+
+		//compute row modifications
+		cRow = (byte)(cColor >>> (8*y));
+		eRow = (byte)(eColor >>> (8*y));
+		cRow = computeRowEffect(cRow, eRow, x);
+		eRow &= ~cRow;
+		cColor = (byte)(cRow << (8*y));
+		eColor = (byte)(eRow << (8*y));
+	
+		//compute column modifications
+		cRow = mapC1toR1(cColor >>> x);
+		eRow = mapC1toR1(eColor >>> x);
+		cRow = computeRowEffect(cRow, eRow, y);
+		eRow &= ~cRow;
+		cColor = mapR1toC1(cRow) << x;
+		eColor = mapR1toC1(eRow) << x;
+		
+		//compute UL diagonal modifications
+		byte shiftDistance = (byte)((x - y) << 3);
+		cRow = mapDiagToR1(BitUtil.signedLeftShift(cColor, shiftDistance));
+		eRow = mapDiagToR1(BitUtil.signedLeftShift(eColor, shiftDistance));
+		cRow = computeRowEffect(cRow, eRow, x);
+		eRow &= ~cRow;
+		cColor = BitUtil.signedLeftShift(mapR1toDiag(cRow), (byte)-shiftDistance);
+		eColor = BitUtil.signedLeftShift(mapR1toDiag(eRow), (byte)-shiftDistance);
+		
+		if (state == WHITE) {
+			white = cColor;
+			black = eColor;
+		} else {
+			white = eColor;
+			black = cColor;
+		}
 	}
 
 	@Override
 	public boolean moveIsLegal(int x, int y, int state) {
+		long cColor;
+		long eColor;
 		
-		return true;
+		if (state == WHITE) {
+			cColor = white;
+			eColor = black;
+		} else {
+			cColor = black;
+			eColor = white;
+		}
+		
+		int cRow;
+		int eRow;
+		
+		//test row placement placement
+		cRow = (byte)(cColor >>> (8*y));
+		eRow = (byte)(eColor >>> (8*y));
+		if (computeRowEffect(cRow, eRow, x) != 0) {
+			return true;
+		}
+		
+		//test Column placement
+		cRow = mapC1toR1(cColor >>> x);
+		eRow = mapC1toR1(eColor >>> x);
+		if (computeRowEffect(cRow, eRow, y) != 0) {
+			return true;
+		}
+		
+		//test Diagonal placement
+		byte shiftDistance = (byte)((x - y) << 3);
+		cRow = mapDiagToR1(BitUtil.signedLeftShift(cColor, shiftDistance));
+		eRow = mapDiagToR1(BitUtil.signedLeftShift(eColor, shiftDistance));
+		if (computeRowEffect(cRow, eRow, x) != 0) {
+			return true;
+		}
+		
+		return false;
+	}
+	
+	private byte computeRowEffect(int mRow, int eRow, int pos) {
+		return Rom.ROWLOOKUP[mRow | (eRow << 8) | (pos << 16)];
 	}
 
 	@Override
