@@ -53,6 +53,10 @@ public class BitUtil {
 		return (x & (x-1)) ^ x;
 	}
 	
+	static long lowSetBit(long x) {
+		return (x & (x-1)) ^ x;
+	}
+	
 	//TODO: replace with lookup table?
 	public static byte inbetweenZone(byte x) {
 		return  (byte)(((1 << ulog2(x)) - 1) & (~x ^ (x-1)));
