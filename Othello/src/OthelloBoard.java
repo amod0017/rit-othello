@@ -61,6 +61,12 @@ public interface OthelloBoard {
 	public int countPieces(int state);
 	
 	/**
+	 * @param state : set as either WHITE or BLACK
+	 * @return true if this player can make a move
+	 */
+	public boolean canMove(int state);
+	
+	/**
 	 * @return true if the game is over (neither player can move)
 	 */
 	public boolean gameIsSet();
