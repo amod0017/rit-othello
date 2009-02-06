@@ -21,6 +21,27 @@ public class OthelloBitBoard implements OthelloBoard {
 	long black;
 	
 	/**
+	 * construct new board from a bitboard of each piece type
+	 * 
+	 * @param white : bitboard corrosponding to white piece placement
+	 * @param black : bitboard corrosponding to black peice placement
+	 */
+	OthelloBitBoard(long white, long black) {
+		this.white = white;
+		this.black = black;
+	}
+	
+	/**
+	 * Copy an OthelloBitBoard
+	 * 
+	 * @param toCopy
+	 */
+	public OthelloBitBoard(OthelloBitBoard toCopy) {
+		white = toCopy.white;
+		black = toCopy.black;
+	}
+	
+	/**
 	 * merges x, y coordinate pairs into a single value, (0-63)
 	 * 
 	 * @param x : x coordinate, (0, 7)
@@ -29,6 +50,26 @@ public class OthelloBitBoard implements OthelloBoard {
 	 */
 	static int xyMerge(int x, int y) {
 		return x | (y << 3);
+	}
+	
+	/**
+	 * extracts x coordinate from an 'xy' int
+	 * 
+	 * @param xy : position (0-63)
+	 * @return extracted x coordinate
+	 */
+	static int xyTox(int xy) {
+		return xy & 7;
+	}
+	
+	/**
+	 * extracts y coordinate from an 'xy' int
+	 * 
+	 * @param xy : position (0-63)
+	 * @return extracted y coordinate
+	 */
+	static int xyToy(int xy) {
+		return xy >> 3;
 	}
 	
 	/**
@@ -126,7 +167,9 @@ public class OthelloBitBoard implements OthelloBoard {
 		return z & 0x0102040810204080L;
 	}
 	
-	@Override
+	/**
+	 * empties the board
+	 */
 	public void clear() {
 		white = 0L;
 		black = 0L;
@@ -151,7 +194,7 @@ public class OthelloBitBoard implements OthelloBoard {
 	public boolean canMove(int state) {
 		for (long toTry = generateLikelyMoves(state); toTry != 0; toTry &= toTry-1) {
 			int square = BitUtil.ulog2(BitUtil.lowSetBit(toTry));
-			if (moveIsLegal(square & 7, square >> 3, state)) {
+			if (moveIsLegal(xyTox(square & 7), xyToy(square >> 3), state)) {
 				return true;
 			}
 		}
@@ -188,6 +231,23 @@ public class OthelloBitBoard implements OthelloBoard {
 	 * @param state : set as either WHITE or BLACK
 	 */
 	public void makeMove(int x, int y, int state) {
+		OthelloBitBoard newBoard = copyAndMakeMove(x, y, state);
+		white = newBoard.white;
+		black = newBoard.black;
+	}
+	
+	/**
+	 * Creates a copy of the game with a move applied.
+	 * Performs a move and all updating involved in an in-game move.
+	 * The move is assumed to be legal.
+	 * Aggressively optimized for speed.
+	 * 
+	 * @param x : proposed horizontal coordinate (0-7)
+	 * @param y : proposed vertical coordinate (0-7)
+	 * @param state : set as either WHITE or BLACK
+	 * @return updated copy of the board
+	 */
+	public OthelloBitBoard copyAndMakeMove(int x, int y, int state) {
 		long cColor;
 		long eColor;
 		
@@ -218,7 +278,7 @@ public class OthelloBitBoard implements OthelloBoard {
 		cColor = mapR1toC1(cRow) << x;
 		eColor = mapR1toC1(eRow) << x;
 		
-		//computeDA0 modifications
+		//compute DA0 modifications
 		byte shiftDistance = (byte)((x - y) << 3);
 		cRow = mapDA0ToR1(BitUtil.signedLeftShift(cColor, shiftDistance));
 		eRow = mapDA0ToR1(BitUtil.signedLeftShift(eColor, shiftDistance));
@@ -237,16 +297,15 @@ public class OthelloBitBoard implements OthelloBoard {
 		eColor = BitUtil.signedLeftShift(mapR1toDD0(eRow), (byte)-shiftDistance);
 		
 		if (state == WHITE) {
-			white = cColor;
-			black = eColor;
+			return new OthelloBitBoard(cColor, eColor);
 		} else {
-			white = eColor;
-			black = cColor;
+			return new OthelloBitBoard(eColor, cColor);
 		}
 	}
 
 	/**
 	 * Test to see if player 'state' (BLACK or WHITE) can move at (x, y)
+	 * Aggressively optimized for speed.
 	 * 
 	 * @param x: proposed x coordinate
 	 * @param y: proposed y coordinate
