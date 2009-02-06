@@ -11,6 +11,11 @@ import java.util.*;
 public class OthelloAlphaBeta {
 	Map<BoardHash, Window> transpositionTable;
 	int minDepthToStore;
+	int valueOfDraw;
+	
+	static final int NOSCORE = 0x8000000;
+	static final int LOWESTSCORE = 0x8000001;
+	static final int HIGHESTSCORE = 0x7FFFFFFF;
 	
 	/*
 	 * This class bundles alpha and beta so the range can be stored in a map
@@ -44,6 +49,7 @@ public class OthelloAlphaBeta {
 	};
 	
 	OthelloAlphaBeta(int minDepthToStore) {
+		this.valueOfDraw = 0;
 		this.minDepthToStore = minDepthToStore;
 		transpositionTable = new HashMap<BoardHash, Window>();
 	}
@@ -69,7 +75,7 @@ public class OthelloAlphaBeta {
 		//align windows
 		alpha = Math.min(alpha, storedWindow.alpha);
 		beta = Math.min(beta, storedWindow.beta);
-		int bestScore = 0x80000000; // initialized to 'very low'
+		int bestScore = NOSCORE;
 		
 		for (long likelyMoves = position.generateLikelyMoves(turn);
 				likelyMoves != 0;
@@ -101,6 +107,10 @@ public class OthelloAlphaBeta {
 			if (newScore > bestScore) {
 				bestScore = newScore;
 			}	
+		}
+		
+		if (bestScore == NOSCORE) { // if NO move was found... the game is over here
+			bestScore = evaluateEnd(position, turn);
 		}
 		
 		if (bestScore <= alpha) { // if fail low
@@ -146,13 +156,28 @@ public class OthelloAlphaBeta {
 			}	
 		}
 		
+		if (bestScore == NOSCORE) { // if NO move was found... the game is over here
+			bestScore = evaluateEnd(position, turn);
+		}
+		
 		return bestScore;
 	}
 	
-	private int evaluateLeaf(OthelloBitBoard position, int state) {
+	public static int evaluateLeaf(OthelloBitBoard position, int state) {
 		return (position.countPieces(state) - position.countPieces(state ^ 1)) << 4;
 	}
 	
+	private int evaluateEnd(OthelloBitBoard position, int state) {
+		int pieceDiff = position.countPieces(state) - position.countPieces(state ^ 1);
+		
+		if (pieceDiff < 0) {
+			return LOWESTSCORE; // LOSE
+		} else if (pieceDiff == 0) {
+			return valueOfDraw;
+		} else {
+			return HIGHESTSCORE; //win
+		}
+	}
 
 	/**
 	 * @param args
