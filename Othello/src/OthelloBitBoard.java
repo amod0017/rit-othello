@@ -74,7 +74,6 @@ public class OthelloBitBoard implements OthelloBoard {
 	
 	/**
 	 * remaps the bit values in C1 to be the bit values of R1
-	 * WARNING: output values outside of R1 are garbage
 	 * 
 	 * @param x : the bitboard
 	 * @return new bitboard
@@ -85,13 +84,12 @@ public class OthelloBitBoard implements OthelloBoard {
 		x |= x >> 14;
 		x |= x >> 7;
 		
-		return (int)x;
+		return (int)x & 0xFF;
 	}
 	
 	/**
 	 * remaps the bit values in DA0 (the ascending diagonal) to be the bit 
 	 * values of R1
-	 * WARNING: values outside of R1 are garbage
 	 * 
 	 * @param x : the bitboard
 	 * @return new bitboard
@@ -101,13 +99,12 @@ public class OthelloBitBoard implements OthelloBoard {
 		x |= x >> 32;
 		x |= x >> 16;
 		x |= x >> 8;
-		return (int)x;
+		return (int)x & 0xFF;
 	}
 	
 	/**
 	 * remaps the bit values in DD0 (the descending diagonal) to be the bit 
 	 * values of R1
-	 * WARNING: values outside of R1 are garbage
 	 * 
 	 * @param x : the bitboard
 	 * @return new bitboard
@@ -117,7 +114,7 @@ public class OthelloBitBoard implements OthelloBoard {
 		x |= x >> 32;
 		x |= x >> 16;
 		x |= x >> 8;
-		return (int)x;
+		return (int)x & 0xFF;
 	}
 	
 	/**
@@ -434,13 +431,78 @@ public class OthelloBitBoard implements OthelloBoard {
 		v |= (v >> 8);
 		return v;
 	}
+	
+	public String toString() {
+		return "[" + Long.toHexString(white) + ", " + Long.toHexString(black) + "]";
+	}
 
 	/**
+	 * test-drive the bitboard engine
+	 * 
 	 * @param args
 	 */
 	public static void main(String[] args) {
+		final int numTests = 100;
 		
-	
+		OthelloBitBoard testBoardA = new OthelloBitBoard(0x00000010081C0000L, 0x0000000000020200L);
+		OthelloBitBoard testBoardB = new OthelloBitBoard(0x1020000001801400L, 0x0018102204080000L);
+		
+		for (int i = 0; i < numTests; ++i) {
+			Object output = null;
+			Object expectedOutput = null;
+			
+			switch (i) {
+			case 0:
+				output = new Boolean(testBoardA.moveIsLegal(5, 5, BLACK));
+				expectedOutput = new Boolean(true);
+				break;
+			case 1:
+				output = new Boolean(testBoardA.moveIsLegal(5, 2, BLACK));
+				expectedOutput = new Boolean(true);
+				break;
+			case 2:
+				output = new Boolean(testBoardA.moveIsLegal(4, 2, BLACK));
+				expectedOutput = new Boolean(false);
+				break;
+			case 3:
+				output = new Boolean(testBoardA.moveIsLegal(2, 4, BLACK));
+				expectedOutput = new Boolean(false);
+				break;
+			case 4:
+				output = new Boolean(testBoardB.moveIsLegal(2, 5, WHITE));
+				expectedOutput = new Boolean(true);
+				break;
+			case 5:
+				output = new Boolean(testBoardB.moveIsLegal(3, 7, WHITE));
+				expectedOutput = new Boolean(false);
+				break;
+			case 6:
+				output = new Boolean(testBoardB.moveIsLegal(4, 4, WHITE));
+				expectedOutput = new Boolean(true);
+				break;
+			case 7:
+				output = new Boolean(testBoardB.moveIsLegal(0, 5, WHITE));
+				expectedOutput = new Boolean(true);
+				break;
+			default:
+				continue;
+			}
+			
+			boolean fail = false;
+			System.out.println("Test " + i + ":");
+			
+			if (!output.equals(expectedOutput)) {
+				fail = true;
+				System.out.println("\tOutput: " + output.toString());
+				System.out.println("\tExpected Output: " + expectedOutput.toString());
+			}
+			
+			if (!fail) {
+				System.out.println("\tPassed!");
+			}
+			
+		}
+		
 	}
 
 }
