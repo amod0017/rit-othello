@@ -484,6 +484,10 @@ public class OthelloBitBoard implements OthelloBoard {
 				output = new Boolean(testBoardB.moveIsLegal(0, 5, WHITE));
 				expectedOutput = new Boolean(true);
 				break;
+			case 8:
+				output = testBoardB.generateLikelyMoves(WHITE);
+				expectedOutput = 0x2C046F5D7A160800L;
+				break;
 			default:
 				continue;
 			}
