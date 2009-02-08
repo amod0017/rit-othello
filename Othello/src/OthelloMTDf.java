@@ -65,6 +65,7 @@ public class OthelloMTDf extends OthelloAlphaBeta {
 		OthelloMTDf testObj = new OthelloMTDf();
 		testObj.setMaxSearchDepth(12);
 		testObj.setLevelsToSort(3);
+		testObj.setMinDepthToStore(4);
 
 		int score = testObj.iterativeMTDf(test1, OthelloBitBoard.WHITE);
 		
