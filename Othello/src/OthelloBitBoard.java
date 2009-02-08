@@ -17,8 +17,8 @@
  * @author Nicholas Ver Hoeve
  */
 public class OthelloBitBoard implements OthelloBoard {
-	long white;
-	long black;
+	public long white;
+	public long black;
 	
 	/**
 	 * construct new board with the initial game position
@@ -447,24 +447,38 @@ public class OthelloBitBoard implements OthelloBoard {
 	}
 	
 	public boolean equals(Object other) {
-		if (!(other instanceof OthelloBoard)) {
+		if (!(other instanceof OthelloBitBoard)) {
 			return false;
 		}
-		if (!(other instanceof OthelloBitBoard)) {
-			OthelloBitBoard o = (OthelloBitBoard)other;
-			return white == o.white && black == o.black;
-		}
+
+		OthelloBitBoard o = (OthelloBitBoard)other;
+		return white == o.white && black == o.black;
+	}
+	
+	/**
+	 * This technique is inspired by zobrist hashing. Zobrist hashing is too slow
+	 * when we cannot do 'incremental updating', and Othello's moving style makes 
+	 * sure we can't easily do that.
+	 * 
+	 * This is a technique that should run faster than a zobrist hash when hashing
+	 * from scratch.
+	 * 
+	 * @return : a hash code
+	 */
+	public int hashCode() {
+		int wlo = (int)white;
+		int whi = (int)(white >>> 32);
+		int blo = (int)black;
+		int bhi = (int)(black >>> 32);
 		
-		OthelloBoard o = (OthelloBoard)other;
-		for (int x = 0; x < 8; ++x) {
-			for (int y = 0; y < 8; ++y) {
-				if (getSquare(x, y) != o.getSquare(x, y)) {
-					return false;
-				} 
-			}
-		}
-		
-		return true;
+		return Rom.NOISEA[wlo & 0xFF] ^ Rom.NOISEB[(wlo >>> 8) & 0xFF] ^
+			Rom.NOISEC[(wlo >> 16) & 0xFF] ^ Rom.NOISED[(wlo >>> 24) & 0xFF] ^ 
+			Rom.NOISEC[~whi & 0xFF] ^ Rom.NOISEA[(~whi >>> 8) & 0xFF] ^
+			Rom.NOISED[(~whi >> 16) & 0xFF] ^ Rom.NOISED[(~whi >>> 24) & 0xFF] ^ 
+			Rom.NOISEC[blo & 0xFF] ^ Rom.NOISEA[(blo >>> 8) & 0xFF] ^
+			Rom.NOISEB[(blo >> 16) & 0xFF] ^ Rom.NOISED[(blo >>> 24) & 0xFF] ^ 
+			Rom.NOISED[~bhi & 0xFF] ^ Rom.NOISEB[(~bhi >>> 8) & 0xFF] ^
+			Rom.NOISEA[(~bhi >> 16) & 0xFF] ^ Rom.NOISEB[(~bhi >>> 24) & 0xFF];
 	}
 	
 	public String toString() {

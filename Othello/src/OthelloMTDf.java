@@ -7,21 +7,21 @@
  * @author Nicholas Ver Hoeve
  */
 public class OthelloMTDf extends OthelloAlphaBeta {
-
-	OthelloMTDf(int minDepthToStore) {
-		super(minDepthToStore);
+	int passes = 0;
+	
+	OthelloMTDf() {}
+	
+	int searchMTDf(OthelloBitBoard position, int turn) {
+		return searchMTDf(position, 0, turn);
 	}
 	
-	int searchMTDf(OthelloBitBoard position, int turn, int depth) {
-		return searchMTDf(position, 0, turn, depth);
-	}
-	
-	int searchMTDf(OthelloBitBoard position, int guess, int turn, int depth) {
-		int alpha = 0x80000000;
-		int beta  = 0x7FFFFFFF;
+	int searchMTDf(OthelloBitBoard position, int guess, int turn) {
+		int alpha = LOWESTSCORE;
+		int beta  = HIGHESTSCORE;
 		int nullWindow;
 		
 		do {
+			++passes;
 			nullWindow = guess;
 			if (guess == alpha)
 			{
@@ -29,7 +29,7 @@ public class OthelloMTDf extends OthelloAlphaBeta {
 			}
 
 			guess = alphaBetaSearch(position, 
-					nullWindow-1, nullWindow, turn, depth);
+					nullWindow-1, nullWindow, turn);
 			
 			if (guess < nullWindow) { // if it failed low
 				beta = guess;
@@ -41,10 +41,13 @@ public class OthelloMTDf extends OthelloAlphaBeta {
 		return guess;
 	}
 	
-	int iterativeMTDf(OthelloBitBoard position, int turn, int depth) {
+	int iterativeMTDf(OthelloBitBoard position, int turn) {
 		int guess = 0;
-		for (int d = 0; d < depth; d += 2) {
-			guess = searchMTDf(position, guess, turn, d);
+		
+		int finalMaxDepth = maxSearchDepth;
+		
+		for (maxSearchDepth = 0; maxSearchDepth <= finalMaxDepth; maxSearchDepth += 2) {
+			guess = searchMTDf(position, guess, turn);
 		}
 		 
 		return guess;
@@ -54,8 +57,24 @@ public class OthelloMTDf extends OthelloAlphaBeta {
 	 * @param args
 	 */
 	public static void main(String[] args) {
-		// TODO Auto-generated method stub
+		long begin = System.currentTimeMillis();
 
+		System.out.println("MTD(f) search");
+		OthelloBitBoard test1 = new OthelloBitBoard(0x0000002C14000000L, 0x0000381028040000L);
+		
+		OthelloMTDf testObj = new OthelloMTDf();
+		testObj.setMaxSearchDepth(12);
+		testObj.setLevelsToSort(3);
+
+		int score = testObj.iterativeMTDf(test1, OthelloBitBoard.WHITE);
+		
+		System.out.println("score: " + score);
+		System.out.println("leaf nodes: " + testObj.getLeafCount());
+		System.out.println("non-leaf nodes: " + testObj.getNodesSearched());
+		System.out.println("nodes retreived: " + testObj.getNodesRetreived());
+		System.out.println("passes: " + testObj.passes);
+		
+		System.out.println("time: " + (System.currentTimeMillis() - begin));
 	}
 
 }
