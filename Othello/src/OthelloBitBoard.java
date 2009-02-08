@@ -21,12 +21,19 @@ public class OthelloBitBoard implements OthelloBoard {
 	long black;
 	
 	/**
+	 * construct new board with the initial game position
+	 */
+	public OthelloBitBoard() {
+		newGame();
+	}
+	
+	/**
 	 * construct new board from a bitboard of each piece type
 	 * 
 	 * @param white : bitboard corrosponding to white piece placement
 	 * @param black : bitboard corrosponding to black peice placement
 	 */
-	OthelloBitBoard(long white, long black) {
+	public OthelloBitBoard(long white, long black) {
 		this.white = white;
 		this.black = black;
 	}
@@ -191,7 +198,7 @@ public class OthelloBitBoard implements OthelloBoard {
 	public boolean canMove(int state) {
 		for (long toTry = generateLikelyMoves(state); toTry != 0; toTry &= toTry-1) {
 			int square = BitUtil.ulog2(BitUtil.lowSetBit(toTry));
-			if (moveIsLegal(xyTox(square & 7), xyToy(square >> 3), state)) {
+			if (moveIsLegal(xyTox(square), xyToy(square), state)) {
 				return true;
 			}
 		}
@@ -475,6 +482,7 @@ public class OthelloBitBoard implements OthelloBoard {
 		OthelloBitBoard testBoardA = new OthelloBitBoard(0x00000010081C0000L, 0x0000000000020200L);
 		OthelloBitBoard testBoardB = new OthelloBitBoard(0x1020000001801400L, 0x0018102204080000L);
 		OthelloBitBoard testBoardC = new OthelloBitBoard(0x30C8A298A69C8870L, 0xF801000041000009L);
+		OthelloBitBoard testBoardD = new OthelloBitBoard(0x00000038180C0001L, 0x0000000000030204L);
 		
 		for (int i = 0; i < numTests; ++i) {
 			Object output = null;
@@ -523,19 +531,23 @@ public class OthelloBitBoard implements OthelloBoard {
 				break;
 			case 10:
 				output = testBoardB.copyAndMakeMove(4, 4, WHITE);
-				expectedOutput = new OthelloBitBoard(0x1030101001801400L, 0x0008002204080000L);;
+				expectedOutput = new OthelloBitBoard(0x1030101001801400L, 0x0008002204080000L);
 				break;
 			case 11:
 				output = testBoardB.copyAndMakeMove(2, 5, WHITE);
-				expectedOutput = new OthelloBitBoard(0x1028040201801400L, 0x0010102004080000L);;
+				expectedOutput = new OthelloBitBoard(0x1028040201801400L, 0x0010102004080000L);
 				break;
 			case 12:
 				output = testBoardC.copyAndMakeMove(3, 3, BLACK);
-				expectedOutput = new OthelloBitBoard(0x30888288a0948070L, 0xF84120104F080809L);;
+				expectedOutput = new OthelloBitBoard(0x30888288a0948070L, 0xF84120104F080809L);
 				break;
 			case 13:
 				output = testBoardC.copyAndMakeMove(7, 0, BLACK);
-				expectedOutput = new OthelloBitBoard(0x30482218261C0800L, 0xF8818080C18080F9L);;
+				expectedOutput = new OthelloBitBoard(0x30482218261C0800L, 0xF8818080C18080F9L);
+				break;
+			case 14:
+				output = new Boolean(testBoardD.canMove(BLACK));
+				expectedOutput = new Boolean(true);
 				break;
 			default:
 				continue;
