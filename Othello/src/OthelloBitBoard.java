@@ -149,8 +149,8 @@ public class OthelloBitBoard implements OthelloBoard {
 	 */
 	private static long mapR1toDA0(int x) {
 		x |= (x & 0xAA) << 8;
-		x |= (x & 0x8844) << 16;
-		long z = (long)x | ((long)(x & 0x80402010) << 32);
+		long z = ((long)x) | (((long)(x & 0x8844)) << 16);
+		z |= (z & 0x80402010) << 32;
 		
 		return z & 0x8040201008040201L;
 	}
@@ -497,6 +497,7 @@ public class OthelloBitBoard implements OthelloBoard {
 		OthelloBitBoard testBoardB = new OthelloBitBoard(0x1020000001801400L, 0x0018102204080000L);
 		OthelloBitBoard testBoardC = new OthelloBitBoard(0x30C8A298A69C8870L, 0xF801000041000009L);
 		OthelloBitBoard testBoardD = new OthelloBitBoard(0x00000038180C0001L, 0x0000000000030204L);
+		OthelloBitBoard testBoardE = new OthelloBitBoard(0xFF9F8D1D0D0F07D9L, 0x004002828200C824L);
 		
 		for (int i = 0; i < numTests; ++i) {
 			Object output = null;
@@ -562,6 +563,10 @@ public class OthelloBitBoard implements OthelloBoard {
 			case 14:
 				output = new Boolean(testBoardD.canMove(BLACK));
 				expectedOutput = new Boolean(true);
+				break;
+			case 15:
+				output = testBoardE.copyAndMakeMove(1, 0, WHITE);
+				expectedOutput = new OthelloBitBoard(0xFF9F8D1D0D0F07DFL, 0x004002828200C820L);
 				break;
 			default:
 				continue;

@@ -531,15 +531,15 @@ public class OthelloAlphaBeta {
 		long begin = System.currentTimeMillis();
 
 		System.out.println("Alpha-Beta search");
-		OthelloBitBoard test1 = new OthelloBitBoard(0x0000002C14000000L, 0x0000381028040000L);
+		//OthelloBitBoard test1 = new OthelloBitBoard(0x0000002C14000000L, 0x0000381028040000L);
+		OthelloBitBoard test1 = new OthelloBitBoard(0xFFBFCD5D4D0F07D9L, 0x004002829210C824L);
 		
 		OthelloAlphaBeta testObj = new OthelloAlphaBeta();
 		testObj.setMaxSearchDepth(12);
 		testObj.setLevelsToSort(3);
 
-		System.out.println("score: " + 
-				testObj.alphaBetaSearch(test1, LOWESTSCORE, HIGHESTSCORE, OthelloBitBoard.WHITE));
-	
+		System.out.println("score: " + testObj.alphaBetaSearch(test1, LOWESTSCORE, HIGHESTSCORE, WHITE));
+		
 		System.out.println("leaf nodes: " + testObj.getLeafCount());
 		System.out.println("non-leaf nodes: " + testObj.getNodesSearched());
 		System.out.println("nodes retreived: " + testObj.getNodesRetreived());
