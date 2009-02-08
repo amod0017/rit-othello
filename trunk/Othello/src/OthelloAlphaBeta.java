@@ -85,6 +85,9 @@ public class OthelloAlphaBeta {
 			this.window = window;
 		}
 	
+		/**
+		 * comparator to sort windows. cares most about alpha. sort ascending
+		 */
 		public int compareTo(BoardAndWindow arg0) {
 			int rank = ((window.alpha) >> 1) -((arg0.window.alpha) >> 1);
 			rank += ((window.beta) >> 4) - ((arg0.window.beta) >> 4);
@@ -93,6 +96,7 @@ public class OthelloAlphaBeta {
 	}
 	
 	/**
+	 * construct with custom table size
 	 */
 	OthelloAlphaBeta(int maxTableEntries) {
 		this.maxTableEntries = maxTableEntries;
@@ -100,20 +104,19 @@ public class OthelloAlphaBeta {
 	}
 	
 	/**
+	 * construct with default table size
 	 */
 	OthelloAlphaBeta() {
 		transpositionTable = new HashMap<BoardAndDepth, Window>(maxTableEntries);
 	}
 	
 	/**
-	 * negamax search with Alpha-beta pruning, with transpositions and sorting
-	 * intended for near-root searching
+	 * negamax search with Alpha-beta pruning, all features
 	 * 
 	 * @param position : current position to analyze
 	 * @param alpha : lower bound on the window
 	 * @param beta : upper bound on the window
 	 * @param turn : current turn (WHITE or BLACK)
-	 * @param depth : how deep to recurse
 	 * @return the value of the best score found
 	 */
 	public int alphaBetaSearch(OthelloBitBoard position, int alpha, int beta, 
@@ -164,7 +167,7 @@ public class OthelloAlphaBeta {
 		}
 		
 		if (alpha == beta) {
-			return alpha;
+			return alpha; // move was already fully determined and stored
 		}
 		
 		int bestScore = NOSCORE;
@@ -194,10 +197,10 @@ public class OthelloAlphaBeta {
 				tWindow = new Window(LOWESTSCORE, HIGHESTSCORE);
 			}
 			
-			moveList.add(new BoardAndWindow(newPosition, tWindow));
+			moveList.add(new BoardAndWindow(newPosition, tWindow)); //add entry and known info to list
 		}
 		
-		Collections.sort(moveList);
+		Collections.sort(moveList); // sort, placing most likely to cutoff first
 		
 		for (BoardAndWindow p : moveList) {
 			int newScore;
@@ -300,7 +303,7 @@ public class OthelloAlphaBeta {
 		}
 		
 		if (alpha == beta) {
-			return alpha;
+			return alpha; // move was already fully determined and stored
 		}
 		
 		int bestScore = NOSCORE;

@@ -11,10 +11,25 @@ public class OthelloMTDf extends OthelloAlphaBeta {
 	
 	OthelloMTDf() {}
 	
+	/**
+	 * MTD(f) search with default guess
+	 * 
+	 * @param position : position to analyze
+	 * @param turn : current player turn
+	 * @return
+	 */
 	int searchMTDf(OthelloBitBoard position, int turn) {
 		return searchMTDf(position, 0, turn);
 	}
 	
+	/**
+	 * MTD(f) search with default guess
+	 * 
+	 * @param position : position to analyze
+	 * @param guess : initial guess of final score
+	 * @param turn : current player turn (WHITE or BLACK)
+	 * @return
+	 */
 	int searchMTDf(OthelloBitBoard position, int guess, int turn) {
 		int alpha = LOWESTSCORE;
 		int beta  = HIGHESTSCORE;
@@ -23,11 +38,11 @@ public class OthelloMTDf extends OthelloAlphaBeta {
 		do {
 			++passes;
 			nullWindow = guess;
-			if (guess == alpha)
-			{
-				nullWindow = guess + 1;
+			if (guess == alpha) {
+				nullWindow = guess + 1; // make sure nullWindow-1 >= guess
 			}
 
+			//null window search about the guess
 			guess = alphaBetaSearch(position, 
 					nullWindow-1, nullWindow, turn);
 			
@@ -36,16 +51,25 @@ public class OthelloMTDf extends OthelloAlphaBeta {
 			} else { // it must have failed high
 				alpha = guess;
 			}
-		} while (alpha < beta);
+		} while (alpha < beta); // do until window converges
 		
 		return guess;
 	}
 	
+	/**
+	 * MTD(f) in an iterative framework
+	 * 
+	 * @param position : position to analyze
+	 * @param turn : current player turn (WHITE or BLACK)
+	 * @return
+	 */
 	int iterativeMTDf(OthelloBitBoard position, int turn) {
 		int guess = 0;
 		
 		int finalMaxDepth = maxSearchDepth;
 		
+		//repeat for 2, 4, 6, 8, etc depth
+		//transposition table will retain some results
 		for (maxSearchDepth = 0; maxSearchDepth <= finalMaxDepth; maxSearchDepth += 2) {
 			guess = searchMTDf(position, guess, turn);
 		}
