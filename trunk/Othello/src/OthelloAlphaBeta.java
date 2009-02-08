@@ -86,9 +86,9 @@ public class OthelloAlphaBeta {
 		}
 	
 		public int compareTo(BoardAndWindow arg0) {
-			int rank = ((arg0.window.alpha) >> 1) - ((window.alpha) >> 1);
-			rank += ((arg0.window.beta) >> 3) - ((window.beta) >> 3);
-			return -rank;
+			int rank = ((window.alpha) >> 1) -((arg0.window.alpha) >> 1);
+			rank += ((window.beta) >> 4) - ((arg0.window.beta) >> 4);
+			return rank;
 		}
 	}
 	
