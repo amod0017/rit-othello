@@ -28,7 +28,7 @@ public class OthelloMTDf extends OthelloAlphaBeta {
 				nullWindow = guess + 1;
 			}
 
-			guess = AlphaBetaSearch(position, 
+			guess = alphaBetaSearch(position, 
 					nullWindow-1, nullWindow, turn, depth);
 			
 			if (guess < nullWindow) { // if it failed low

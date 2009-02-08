@@ -9,13 +9,17 @@ import java.util.*;
  * @author Nicholas Ver Hoeve
  */
 public class OthelloAlphaBeta {
-	Map<BoardHash, Window> transpositionTable;
+	Map<HashBoard, Window> transpositionTable;
 	int minDepthToStore;
 	int valueOfDraw;
 	
-	static final int NOSCORE = 0x8000000;
-	static final int LOWESTSCORE = 0x8000001;
+	static final int NOSCORE = 0x80000000;
+	static final int LOWESTSCORE = 0x80000001;
 	static final int HIGHESTSCORE = 0x7FFFFFFF;
+	
+	int leafCount = 0;
+	int nodesSearched = 0;
+	int nodesRetrieved = 0;
 	
 	/*
 	 * This class bundles alpha and beta so the range can be stored in a map
@@ -35,32 +39,42 @@ public class OthelloAlphaBeta {
 	 * This class is needed because the depth of the board when analyzed must
 	 * be included and factored into the hashcode.
 	 */
-	public static class BoardHash {
-		int hash;
+	public static class HashBoard extends OthelloBitBoard {
+		int depth;
 		
-		public BoardHash(OthelloBitBoard board, int depth) {
-			int depthHash = depth * 136385313;
-			hash = board.hashCode() ^ depthHash;
+		public HashBoard(OthelloBitBoard board, int depth) {
+			white = board.white;
+			black = board.black;
 		}
 		
 		public int hashCode() {
-			return hash;
+			return super.hashCode() ^ (depth * 136385313);
+		}
+		
+		public boolean equals(Object other) {
+			return super.equals(other) && 
+				(other instanceof HashBoard) && 
+				((HashBoard)other).depth == depth;
 		}
 	};
 	
 	OthelloAlphaBeta(int minDepthToStore) {
 		this.valueOfDraw = 0;
 		this.minDepthToStore = minDepthToStore;
-		transpositionTable = new HashMap<BoardHash, Window>();
+		transpositionTable = new HashMap<HashBoard, Window>();
 	}
 	
-	public int AlphaBetaSearch(OthelloBitBoard position, int alpha, int beta, 
+	public int alphaBetaSearch(OthelloBitBoard position, int alpha, int beta, 
 			int turn, int depth) {
-		BoardHash hash = new BoardHash(position, depth);
-		Window storedWindow = transpositionTable.get(hash);
+		HashBoard hashBoard = new HashBoard(position, depth);
+		Window storedWindow = transpositionTable.get(hashBoard);
+		
+		++nodesSearched;
 		
 		if (storedWindow != null)
 		{
+			++nodesRetrieved;
+			
 			//if we know that this stored position
 			if (storedWindow.alpha >= beta) {
 				return storedWindow.alpha;
@@ -68,13 +82,18 @@ public class OthelloAlphaBeta {
 			if (storedWindow.beta <= alpha) {
 				return storedWindow.alpha;
 			}
+			
+			//align windows
+			alpha = Math.min(alpha, storedWindow.alpha);
+			beta = Math.min(beta, storedWindow.beta);
 		} else {
 			storedWindow = new Window(); // go ahead and allocate
 		}
 		
-		//align windows
-		alpha = Math.min(alpha, storedWindow.alpha);
-		beta = Math.min(beta, storedWindow.beta);
+		if (alpha == beta) {
+			return alpha;
+		}
+		
 		int bestScore = NOSCORE;
 		
 		for (long likelyMoves = position.generateLikelyMoves(turn);
@@ -93,15 +112,15 @@ public class OthelloAlphaBeta {
 			int newScore;
 			if (depth <= 1) { // base case
 				newScore = evaluateLeaf(newPosition, turn);
+				++leafCount;
 			} else {//recurse
 				if (depth < minDepthToStore) {
-					newScore = AlphaBetaNoTable(newPosition, -beta, 
+					newScore = alphaBetaNoTable(newPosition, -beta, 
 							-Math.max(alpha, bestScore), turn ^ 1, depth - 1);
 				} else {
-					newScore = AlphaBetaSearch(newPosition, -beta, 
+					newScore = alphaBetaSearch(newPosition, -beta, 
 							-Math.max(alpha, bestScore), turn ^ 1, depth - 1);
 				}
-				
 			}
 			
 			if (newScore > bestScore) {
@@ -110,7 +129,17 @@ public class OthelloAlphaBeta {
 		}
 		
 		if (bestScore == NOSCORE) { // if NO move was found... the game is over here
-			bestScore = evaluateEnd(position, turn);
+			if (position.canMove(turn ^ 1)) {
+				// player loses turn
+				if (depth < minDepthToStore) {
+					bestScore = alphaBetaNoTable(position, -beta, -alpha, turn ^ 1, depth - 1);
+				} else {
+					bestScore = alphaBetaSearch(position, -beta, -alpha, turn ^ 1, depth - 1);
+				}
+			} else {
+				//end of game
+				bestScore = evaluateEnd(position, turn);
+			}
 		}
 		
 		if (bestScore <= alpha) { // if fail low
@@ -121,14 +150,15 @@ public class OthelloAlphaBeta {
 			storedWindow.alpha = storedWindow.beta = bestScore; // store exact value
 		}
 		
-		transpositionTable.put(hash, storedWindow); // store results for future lookup
+		transpositionTable.put(hashBoard, storedWindow); // store results for future lookup
 		
 		return bestScore;
 	}
 	
-	public int AlphaBetaNoTable(OthelloBitBoard position, int alpha, int beta, 
+	public int alphaBetaNoTable(OthelloBitBoard position, int alpha, int beta, 
 			int turn, int depth) {
-		int bestScore = 0x80000000; // initialized to 'very low'
+		++nodesSearched;
+		int bestScore = NOSCORE;
 		
 		for (long likelyMoves = position.generateLikelyMoves(turn);
 				likelyMoves != 0;
@@ -146,8 +176,9 @@ public class OthelloAlphaBeta {
 			int newScore;
 			if (depth <= 1) { // base case
 				newScore = evaluateLeaf(newPosition, turn);
+				++leafCount;
 			} else {//recurse
-				newScore = AlphaBetaNoTable(newPosition, -beta, 
+				newScore = alphaBetaNoTable(newPosition, -beta, 
 						-Math.max(alpha, bestScore), turn ^ 1, depth - 1);
 			}
 			
@@ -156,15 +187,21 @@ public class OthelloAlphaBeta {
 			}	
 		}
 		
-		if (bestScore == NOSCORE) { // if NO move was found... the game is over here
-			bestScore = evaluateEnd(position, turn);
+		if (bestScore == NOSCORE) { // if NO move was found...
+			if (position.canMove(turn ^ 1)) {
+				// player loses turn
+				bestScore = alphaBetaNoTable(position, -beta, -alpha, turn ^ 1, depth - 1);
+			} else {
+				//end of game
+				bestScore = evaluateEnd(position, turn);
+			}
 		}
 		
 		return bestScore;
 	}
 	
 	public static int evaluateLeaf(OthelloBitBoard position, int state) {
-		return (position.countPieces(state) - position.countPieces(state ^ 1)) << 4;
+		return (position.countPieces(state) - position.countPieces(state ^ 1));
 	}
 	
 	private int evaluateEnd(OthelloBitBoard position, int state) {
@@ -179,11 +216,43 @@ public class OthelloAlphaBeta {
 		}
 	}
 
+	public int getLeafCount() {
+		return leafCount;
+	}
+
+	public int getNodesSearched() {
+		return nodesSearched;
+	}
+	
+	public int getNodesRetreived() {
+		return nodesRetrieved;
+	}
+	
+	public void resetCounters() {
+		leafCount = 0;
+		nodesSearched = 0;
+		nodesRetrieved = 0;
+	}
+
 	/**
 	 * @param args
+	 * 
+	 * run alpha-beta tests
 	 */
 	public static void main(String[] args) {
-		// TODO Auto-generated method stub
+		long begin = System.currentTimeMillis();
 
+		OthelloBitBoard test1 = new OthelloBitBoard();
+		
+		OthelloAlphaBeta testObj = new OthelloAlphaBeta(4);
+
+		int score = testObj.alphaBetaSearch(test1, LOWESTSCORE, HIGHESTSCORE, OthelloBitBoard.WHITE, 9);
+		
+		System.out.println("score: " + score);
+		System.out.println("leaf nodes: " + testObj.getLeafCount());
+		System.out.println("non-leaf nodes: " + testObj.getNodesSearched());
+		System.out.println("nodes retreived: " + testObj.getNodesRetreived());
+		
+		System.out.println("time: " + (System.currentTimeMillis() - begin));
 	}
 }
