@@ -61,6 +61,7 @@ public class OthelloMTDf extends OthelloAlphaBeta {
 
 		System.out.println("MTD(f) search");
 		OthelloBitBoard test1 = new OthelloBitBoard(0x0000002C14000000L, 0x0000381028040000L);
+		//OthelloBitBoard test1 = new OthelloBitBoard(0xFF9F8D1D0D0F07D9L, 0x004002828200C824L);
 		
 		OthelloMTDf testObj = new OthelloMTDf();
 		testObj.setMaxSearchDepth(12);
