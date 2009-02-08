@@ -245,8 +245,8 @@ public class OthelloBitBoard implements OthelloBoard {
 	 * @return updated copy of the board
 	 */
 	public OthelloBitBoard copyAndMakeMove(int x, int y, int state) {
-		long cColor;
-		long eColor;
+		long cColor; // current color (color of who's turn it is)
+		long eColor; // enemy color
 		
 		if (state == WHITE) {
 			cColor = white;
@@ -258,22 +258,29 @@ public class OthelloBitBoard implements OthelloBoard {
 		
 		int cRow;
 		int eRow;
+		
+		//this mask has a set bit for each position on the board that will be
+		//wholly unnaffected by this move. Affected bit positions are cleared.
+		long unmodifiedMask = ~Rom.ALLDIRECTIONLOOKUP[xyMerge(x, y)];
+		
+		long finalCColor = cColor & unmodifiedMask;
+		long finalEColor = eColor & unmodifiedMask;
 
 		//compute row modifications
-		cRow = (byte)(cColor >>> (8*y));
-		eRow = (byte)(eColor >>> (8*y));
+		cRow = (int)(cColor >>> (8*y)) & 0xFF;
+		eRow = (int)(eColor >>> (8*y)) & 0xFF;
 		cRow = computeRowEffect(cRow, eRow, x);
 		eRow &= ~cRow;
-		cColor = (byte)(cRow << (8*y));
-		eColor = (byte)(eRow << (8*y));
+		finalCColor |= ((long)cRow << (8*y));
+		finalEColor |= ((long)eRow << (8*y));
 	
 		//compute column modifications
 		cRow = mapC1toR1(cColor >>> x);
 		eRow = mapC1toR1(eColor >>> x);
 		cRow = computeRowEffect(cRow, eRow, y);
 		eRow &= ~cRow;
-		cColor = mapR1toC1(cRow) << x;
-		eColor = mapR1toC1(eRow) << x;
+		finalCColor |= mapR1toC1(cRow) << x;
+		finalEColor |= mapR1toC1(eRow) << x;
 		
 		//compute DA0 modifications
 		byte shiftDistance = (byte)((x - y) << 3);
@@ -281,8 +288,8 @@ public class OthelloBitBoard implements OthelloBoard {
 		eRow = mapDA0ToR1(BitUtil.signedLeftShift(eColor, shiftDistance));
 		cRow = computeRowEffect(cRow, eRow, x);
 		eRow &= ~cRow;
-		cColor = BitUtil.signedLeftShift(mapR1toDA0(cRow), (byte)-shiftDistance);
-		eColor = BitUtil.signedLeftShift(mapR1toDA0(eRow), (byte)-shiftDistance);
+		finalCColor |= BitUtil.signedLeftShift(mapR1toDA0(cRow), (byte)-shiftDistance);
+		finalEColor |= BitUtil.signedLeftShift(mapR1toDA0(eRow), (byte)-shiftDistance);
 		
 		//compute DD0 modifications
 		shiftDistance = (byte)((7 - x - y) << 3); // distance needed to map to DD0
@@ -290,13 +297,13 @@ public class OthelloBitBoard implements OthelloBoard {
 		eRow = mapDD0ToR1(BitUtil.signedLeftShift(eColor, shiftDistance));
 		cRow = computeRowEffect(cRow, eRow, x);
 		eRow &= ~cRow;
-		cColor = BitUtil.signedLeftShift(mapR1toDD0(cRow), (byte)-shiftDistance);
-		eColor = BitUtil.signedLeftShift(mapR1toDD0(eRow), (byte)-shiftDistance);
+		finalCColor |= BitUtil.signedLeftShift(mapR1toDD0(cRow), (byte)-shiftDistance);
+		finalEColor |= BitUtil.signedLeftShift(mapR1toDD0(eRow), (byte)-shiftDistance);
 		
 		if (state == WHITE) {
-			return new OthelloBitBoard(cColor, eColor);
+			return new OthelloBitBoard(finalCColor, finalEColor);
 		} else {
-			return new OthelloBitBoard(eColor, cColor);
+			return new OthelloBitBoard(finalEColor, finalCColor);
 		}
 	}
 
@@ -310,8 +317,8 @@ public class OthelloBitBoard implements OthelloBoard {
 	 * @return true if move is legal
 	 */
 	public boolean moveIsLegal(int x, int y, int state) {
-		long cColor;
-		long eColor;
+		long cColor; // current color (color of who's turn it is)
+		long eColor; // enemy color
 		
 		if (state == WHITE) {
 			cColor = white;
@@ -325,16 +332,16 @@ public class OthelloBitBoard implements OthelloBoard {
 		int eRow;
 		
 		//check for capture on row
-		cRow = (byte)(cColor >>> (8*y));
-		eRow = (byte)(eColor >>> (8*y));
-		if (computeRowEffect(cRow, eRow, x) != 0) {
+		cRow = (int)(cColor >>> (8*y)) & 0xFF;
+		eRow = (int)(eColor >>> (8*y)) & 0xFF;
+		if (computeRowEffect(cRow, eRow, x) != cRow) {
 			return true;
 		}
 		
 		//check for capture on column
 		cRow = mapC1toR1(cColor >>> x);
 		eRow = mapC1toR1(eColor >>> x);
-		if (computeRowEffect(cRow, eRow, y) != 0) {
+		if (computeRowEffect(cRow, eRow, y) != cRow) {
 			return true;
 		}
 		
@@ -342,7 +349,7 @@ public class OthelloBitBoard implements OthelloBoard {
 		byte shiftDistance = (byte)((x - y) << 3); // distance needed to map to DA0
 		cRow = mapDA0ToR1(BitUtil.signedLeftShift(cColor, shiftDistance));
 		eRow = mapDA0ToR1(BitUtil.signedLeftShift(eColor, shiftDistance));
-		if (computeRowEffect(cRow, eRow, x) != 0) {
+		if (computeRowEffect(cRow, eRow, x) != cRow) {
 			return true;
 		}
 		
@@ -350,7 +357,7 @@ public class OthelloBitBoard implements OthelloBoard {
 		shiftDistance = (byte)((7 - x - y) << 3); // distance needed to map to DD0
 		cRow = mapDD0ToR1(BitUtil.signedLeftShift(cColor, shiftDistance));
 		eRow = mapDD0ToR1(BitUtil.signedLeftShift(eColor, shiftDistance));
-		if (computeRowEffect(cRow, eRow, x) != 0) {
+		if (computeRowEffect(cRow, eRow, x) != cRow) {
 			return true;
 		}
 		
@@ -367,8 +374,8 @@ public class OthelloBitBoard implements OthelloBoard {
 	 * @param pos : proposed place to move
 	 * @return the new mrow (friendly pieces) after making the move
 	 */
-	private byte computeRowEffect(int mRow, int eRow, int pos) {
-		return Rom.ROWLOOKUP[mRow | (eRow << 8) | (pos << 16)];
+	private int computeRowEffect(int mRow, int eRow, int pos) {
+		return (int)Rom.ROWLOOKUP[mRow | (eRow << 8) | (pos << 16)] & 0xFF;
 	}
 
 	/**
@@ -432,6 +439,27 @@ public class OthelloBitBoard implements OthelloBoard {
 		return v;
 	}
 	
+	public boolean equals(Object other) {
+		if (!(other instanceof OthelloBoard)) {
+			return false;
+		}
+		if (!(other instanceof OthelloBitBoard)) {
+			OthelloBitBoard o = (OthelloBitBoard)other;
+			return white == o.white && black == o.black;
+		}
+		
+		OthelloBoard o = (OthelloBoard)other;
+		for (int x = 0; x < 8; ++x) {
+			for (int y = 0; y < 8; ++y) {
+				if (getSquare(x, y) != o.getSquare(x, y)) {
+					return false;
+				} 
+			}
+		}
+		
+		return true;
+	}
+	
 	public String toString() {
 		return "[" + Long.toHexString(white) + ", " + Long.toHexString(black) + "]";
 	}
@@ -442,10 +470,11 @@ public class OthelloBitBoard implements OthelloBoard {
 	 * @param args
 	 */
 	public static void main(String[] args) {
-		final int numTests = 100;
+		final int numTests = 40;
 		
 		OthelloBitBoard testBoardA = new OthelloBitBoard(0x00000010081C0000L, 0x0000000000020200L);
 		OthelloBitBoard testBoardB = new OthelloBitBoard(0x1020000001801400L, 0x0018102204080000L);
+		OthelloBitBoard testBoardC = new OthelloBitBoard(0x30C8A298A69C8870L, 0xF801000041000009L);
 		
 		for (int i = 0; i < numTests; ++i) {
 			Object output = null;
@@ -488,8 +517,32 @@ public class OthelloBitBoard implements OthelloBoard {
 				output = testBoardB.generateLikelyMoves(WHITE);
 				expectedOutput = 0x2C046F5D7A160800L;
 				break;
+			case 9:
+				output = new Integer(testBoardB.countPieces(BLACK));
+				expectedOutput = new Integer(7);
+				break;
+			case 10:
+				output = testBoardB.copyAndMakeMove(4, 4, WHITE);
+				expectedOutput = new OthelloBitBoard(0x1030101001801400L, 0x0008002204080000L);;
+				break;
+			case 11:
+				output = testBoardB.copyAndMakeMove(2, 5, WHITE);
+				expectedOutput = new OthelloBitBoard(0x1028040201801400L, 0x0010102004080000L);;
+				break;
+			case 12:
+				output = testBoardC.copyAndMakeMove(3, 3, BLACK);
+				expectedOutput = new OthelloBitBoard(0x30888288a0948070L, 0xF84120104F080809L);;
+				break;
+			case 13:
+				output = testBoardC.copyAndMakeMove(7, 0, BLACK);
+				expectedOutput = new OthelloBitBoard(0x30482218261C0800L, 0xF8818080C18080F9L);;
+				break;
 			default:
 				continue;
+			}
+			
+			if (output == null) {
+				break;
 			}
 			
 			boolean fail = false;
