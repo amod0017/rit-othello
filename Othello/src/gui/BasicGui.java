@@ -9,12 +9,11 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 
 import javax.swing.BorderFactory;
+import javax.swing.ImageIcon;
 import javax.swing.JLabel;
 import javax.swing.JFrame;
-import javax.swing.ImageIcon;
 import javax.swing.UIManager;
 import javax.swing.SwingUtilities;
-import javax.swing.border.Border;
 
 /**
  * Basic GUI to build board configurations.
@@ -23,12 +22,17 @@ import javax.swing.border.Border;
  */
 public class BasicGui extends JPanel {
 
-	/** Gameboard */
+	/** Game board **/
 	private JLabel[][] m_gameboard;
 
-	/** Constants */
+	/** Constants **/
 	static final int ROWS = 8;
 	static final int COLS = 8;
+
+	/** Globals **/
+	private static ImageIcon emptyImage;
+	private static ImageIcon blackImage;
+	private static ImageIcon whiteImage;
 
 	/**
 	 * Constructor creates the board
@@ -39,10 +43,9 @@ public class BasicGui extends JPanel {
         super(new GridLayout(ROWS, COLS));
 
         // Images
-        // TODO: Create Images!
-        // ImageIcon emptyImage = new ImageIcon("images/blah.gif", "empty");
-        // ImageIcon blackImage = new ImageIcon("images/blah.gif", "black");
-        // ImageIcon whiteImage = new ImageIcon("images/blah.gif", "white");
+        emptyImage = new ImageIcon("images/empty.gif", "empty");
+        blackImage = new ImageIcon("images/black.gif", "black");
+        whiteImage = new ImageIcon("images/white.gif", "white");
 
         // Creating the Labels
         m_gameboard = new JLabel[ROWS][COLS];
@@ -50,7 +53,7 @@ public class BasicGui extends JPanel {
         	for (int j=0; j<COLS; j++) {
 
         		// Create each label
-        		JLabel lbl = new JLabel();
+        		JLabel lbl = new JLabel(emptyImage);
         		lbl.setPreferredSize( new Dimension(50, 50) );
         		lbl.setBorder( BorderFactory.createLineBorder(Color.black) );
 
@@ -70,8 +73,14 @@ public class BasicGui extends JPanel {
 			}
         }
 
+        // Initial Board configuration
+        m_gameboard[3][3].setIcon( blackImage );
+        m_gameboard[4][4].setIcon( blackImage );
+        m_gameboard[3][4].setIcon( whiteImage );
+        m_gameboard[4][3].setIcon( whiteImage );
 
     }
+
 
 
     /**
