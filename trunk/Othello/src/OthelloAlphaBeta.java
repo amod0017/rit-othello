@@ -189,7 +189,7 @@ public class OthelloAlphaBeta {
 			
 			//search the table for the most well-searched window relating to this new position
 			Window tWindow = null;
-			for (int i = maxSearchDepth; i > maxSearchDepth - 8 && i >= 0 && tWindow == null; --i) {
+			for (int i = maxSearchDepth; i >= minDepthToStore && tWindow == null; --i) {
 				tWindow = transpositionTable.get(new BoardAndDepth(newPosition, i, turn ^ 1));
 			}
 			
