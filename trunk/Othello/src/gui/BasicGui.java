@@ -74,7 +74,6 @@ public class BasicGui extends JPanel {
 			}
         });
 
-
         // Constructor creates a new game automatically
         m_othello = new OthelloBitBoard();
         m_player = m_othello.canMove( OthelloBoard.BLACK ) ? OthelloBoard.BLACK : OthelloBoard.WHITE;
@@ -113,24 +112,31 @@ public class BasicGui extends JPanel {
         				// Debug
         				System.out.println("Clicked " + x + ":" + y);
 
+        				// Ignore Clicks if Game is over
+        				if ( m_othello.gameIsSet() ) {
+        					return;
+        				}
+
         				// When it is a Legal Move
         				if ( m_othello.moveIsLegal(x, y, m_player) ) {
         					m_othello.makeMove(x, y, m_player);
-        					togglePlayer();
         					updateBoard();
+
+        					// Set the next player
+        					// If the next has no moves come back to this player
+        					togglePlayer();
+        					if ( !m_othello.canMove(m_player) ) {
+        						togglePlayer();
+        					}
 
         					// Update the game board
         					int black = m_othello.countPieces(OthelloBoard.BLACK);
         					int white = m_othello.countPieces(OthelloBoard.WHITE);
-        					String str = "Score is Black (" + black + ") and White (" + white + ")";
-        					m_feedback.setText(str);
+        					m_feedback.setText( "Score is Black (" + black + ") and White (" + white + ")" );
 
-            				// Game is over
-            				// TODO: For now it prints results to stdout
+            				// Game is over - show results
             				if ( m_othello.gameIsSet() ) {
-            					System.out.println("Results:");
-            					System.out.println("Black: " + black);
-            					System.out.println("White: " + white);
+            					m_feedback.setText( "Results are Black (" + black + ") and White (" + white + ")" );
             				}
 
         				}
@@ -150,14 +156,13 @@ public class BasicGui extends JPanel {
 			}
         }
 
-
         // Add the Grid, Feedback, and Options Panes
         add(grid, BorderLayout.NORTH);
         add(feedback, BorderLayout.CENTER);
         add(options, BorderLayout.SOUTH);
 
-
     }
+
 
     /**
      * Redraw the board
@@ -213,4 +218,5 @@ public class BasicGui extends JPanel {
             }
         });
     }
+
 }
