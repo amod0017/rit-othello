@@ -1,4 +1,5 @@
 package core;
+
 import java.util.*;
 
 /**
@@ -32,6 +33,10 @@ public class OthelloAlphaBeta {
 	int nodesRetrieved = 0;
 	
 	int maxTableEntries = 750000;
+	
+	protected OthelloBitBoard rootNode = null; // position to begin analysis
+	protected int rootNodeTurn; //the current player turn (WHITE or BLACK) for root node
+	protected int scoreOfConfiguration = NOSCORE; // score of the last completed scan of this root
 	
 	/*
 	 * This class bundles alpha and beta so the range can be stored in a map
@@ -120,14 +125,14 @@ public class OthelloAlphaBeta {
 	 * @param turn : current turn (WHITE or BLACK)
 	 * @return the value of the best score found
 	 */
-	public int alphaBetaSearch(OthelloBitBoard position, int alpha, int beta, 
-			int turn) {
-		
+	public int alphaBetaSearch(int alpha, int beta) {
 		if (levelsToSort <= 0) {
-			return alphaBetaNoSort(position, alpha, beta, turn, maxSearchDepth);
+			scoreOfConfiguration = alphaBetaNoSort(rootNode, alpha, beta, rootNodeTurn, maxSearchDepth);
 		} else {
-			return alphaBetaSorted(position, alpha, beta, turn, maxSearchDepth);
+			scoreOfConfiguration = alphaBetaSorted(rootNode, alpha, beta, rootNodeTurn, maxSearchDepth);
 		}
+		
+		return scoreOfConfiguration;
 	}
 	
 	/**
@@ -438,7 +443,7 @@ public class OthelloAlphaBeta {
 	 * estimates the value of the position for use in leaf nodes
 	 * 
 	 * @param position : current position
-	 * @param turn: who's turn (WHITE or BLACK
+	 * @param turn: who's turn (WHITE or BLACK)
 	 * @return an estimation of the 'quality' of this positon
 	 */
 	public static int evaluateLeaf(OthelloBitBoard position, int turn) {
@@ -464,16 +469,81 @@ public class OthelloAlphaBeta {
 		return pieceScore + positionScore;
 	}
 	
+	/**
+	 * evaluate the results of a game that has ended
+	 * 
+	 * @param position
+	 * @param state
+	 * @return score for an ended game
+	 */	
 	private int evaluateEnd(OthelloBitBoard position, int state) {
 		int pieceDiff = position.countPieces(state) - position.countPieces(state ^ 1);
 		
 		if (pieceDiff < 0) {
-			return LOWESTSCORE; // LOSE
+			return LOWESTSCORE + 1; // LOSE
 		} else if (pieceDiff == 0) {
 			return valueOfDraw;
 		} else {
-			return HIGHESTSCORE; //win
+			return HIGHESTSCORE - 1; //win
 		}
+	}
+	
+	/**
+	 * Performs a narrow-window search about a known score and returns the move instead
+	 * of the score.
+	 * 
+	 * @return the best move (0-63). Use OthelloBitBoard.xyTox() and OthelloBitBoard.xyToy() to
+	 *  extract x and y values. Returns -1 in the event of an error.
+	 */
+	public int retreiveBestMove() {
+		if (scoreOfConfiguration == NOSCORE) {
+			return -1;
+		}
+		
+		int bestScore = NOSCORE;
+		int bestMove = -1;
+		int alpha = (scoreOfConfiguration > LOWESTSCORE) ? scoreOfConfiguration - 1 : LOWESTSCORE;
+		int beta = (scoreOfConfiguration < HIGHESTSCORE) ? scoreOfConfiguration + 1 : HIGHESTSCORE;
+		
+		for (long likelyMoves = rootNode.generateLikelyMoves(rootNodeTurn);
+				likelyMoves != 0;
+				likelyMoves &= (likelyMoves - 1)) {
+			int movePos = BitUtil.ulog2(BitUtil.lowSetBit(likelyMoves));
+			int moveX = OthelloBitBoard.xyTox(movePos);
+			int moveY = OthelloBitBoard.xyToy(movePos);
+			
+			if (!rootNode.moveIsLegal(moveX, moveY, rootNodeTurn)) {
+				continue;
+			}
+			
+			OthelloBitBoard newPosition = rootNode.copyAndMakeMove(moveX, moveY, rootNodeTurn);
+			
+			int newScore;
+			if (maxSearchDepth <= 1) { // base case
+				newScore = evaluateLeaf(newPosition, rootNodeTurn);
+				++leafCount;
+			} else {//recurse
+				newScore = -alphaBetaSorted(newPosition, -beta, 
+						-Math.max(alpha, bestScore), rootNodeTurn ^ 1, maxSearchDepth - 1);
+			}
+			
+			if (newScore > bestScore) {
+				bestScore = newScore;
+				bestMove = movePos;
+				
+				if (bestScore >= beta) {
+					System.err.println("Error: failed to retreive move! Score input was incorrect...?");
+					return -1;
+				}
+			}	
+		}
+		
+		if (bestScore == NOSCORE) { // if NO move was found...
+			System.err.println("Warning... player cannot move. AI should not have been executed.");
+			return -1;
+		}
+		
+		return bestMove;
 	}
 
 	public int getLeafCount() {
@@ -516,6 +586,7 @@ public class OthelloAlphaBeta {
 
 	public void setMaxSearchDepth(int maxSearchDepth) {
 		this.maxSearchDepth = maxSearchDepth;
+		scoreOfConfiguration = 0; //reset, because this score will no longer be valid.
 	}
 
 	public int getLevelsToSort() {
@@ -524,6 +595,12 @@ public class OthelloAlphaBeta {
 
 	public void setLevelsToSort(int levelsToSort) {
 		this.levelsToSort = levelsToSort;
+	}
+	
+	public void setRootNode(OthelloBoard board, int turn) {
+		rootNode = new OthelloBitBoard(board);
+		rootNodeTurn = turn;
+		scoreOfConfiguration = NOSCORE;
 	}
 
 	/**
@@ -541,8 +618,13 @@ public class OthelloAlphaBeta {
 		OthelloAlphaBeta testObj = new OthelloAlphaBeta();
 		testObj.setMaxSearchDepth(12);
 		testObj.setLevelsToSort(3);
+		testObj.setRootNode(test1, WHITE);
 
-		System.out.println("score: " + testObj.alphaBetaSearch(test1, LOWESTSCORE, HIGHESTSCORE, WHITE));
+		System.out.println("score: " + testObj.alphaBetaSearch(LOWESTSCORE, HIGHESTSCORE));
+		
+		long r2 = System.currentTimeMillis();
+		System.out.println("best move " + testObj.retreiveBestMove());
+		
 		
 		System.out.println("leaf nodes: " + testObj.getLeafCount());
 		System.out.println("non-leaf nodes: " + testObj.getNodesSearched());
@@ -550,21 +632,6 @@ public class OthelloAlphaBeta {
 		System.out.println("table size: " + testObj.transpositionTable.size());
 		
 		System.out.println("time: " + (System.currentTimeMillis() - begin));
-		
-		begin = System.currentTimeMillis();
-
-		System.out.println("Alpha-Beta search");
-		//test1 = new OthelloBitBoard();
-		
-		testObj = new OthelloAlphaBeta();
-
-		System.out.println("score: " + 
-				testObj.alphaBetaSearch(test1, -1, 0, OthelloBitBoard.WHITE));
-	
-		System.out.println("leaf nodes: " + testObj.getLeafCount());
-		System.out.println("non-leaf nodes: " + testObj.getNodesSearched());
-		System.out.println("nodes retreived: " + testObj.getNodesRetreived());
-		
-		System.out.println("time: " + (System.currentTimeMillis() - begin));
+		System.out.println("re-search time: " + (System.currentTimeMillis() - r2));
 	}
 }

@@ -51,6 +51,21 @@ public class OthelloBitBoard implements OthelloBoard {
 	}
 	
 	/**
+	 * Copy an OthelloBoard
+	 * 
+	 * @param toCopy
+	 */
+	public OthelloBitBoard(OthelloBoard toCopy) {
+		if (toCopy instanceof OthelloBitBoard) {
+			OthelloBitBoard o = (OthelloBitBoard)toCopy;
+			white = o.white;
+			black = o.black;
+		}
+		
+		//need to generalize if other implementations of OthelloBoard are ever made
+	}
+	
+	/**
 	 * merges x, y coordinate pairs into a single value, (0-63)
 	 * 
 	 * @param x : x coordinate, (0, 7)
