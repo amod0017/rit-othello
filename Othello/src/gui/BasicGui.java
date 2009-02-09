@@ -15,6 +15,9 @@ import javax.swing.JFrame;
 import javax.swing.UIManager;
 import javax.swing.SwingUtilities;
 
+import core.OthelloBitBoard;
+import core.OthelloBoard;
+
 /**
  * Basic GUI to build board configurations.
  *
@@ -24,6 +27,8 @@ public class BasicGui extends JPanel {
 
 	/** Game board **/
 	private JLabel[][] m_gameboard;
+	private OthelloBoard m_othello;
+	private int m_player;
 
 	/** Constants **/
 	static final int ROWS = 8;
@@ -42,27 +47,52 @@ public class BasicGui extends JPanel {
     	// 8x8 Game Board (rows x cols)
         super(new GridLayout(ROWS, COLS));
 
+        // Constructor creates a new game automatically
+        m_othello = new OthelloBitBoard();
+        m_player = m_othello.canMove( OthelloBoard.BLACK ) ? OthelloBoard.BLACK : OthelloBoard.WHITE;
+
         // Images
         emptyImage = new ImageIcon("images/empty.gif", "empty");
         blackImage = new ImageIcon("images/black.gif", "black");
         whiteImage = new ImageIcon("images/white.gif", "white");
 
-        // Creating the Labels
+        // Creating the Board
         m_gameboard = new JLabel[ROWS][COLS];
         for (int i=0; i<ROWS; ++i) {
-        	for (int j=0; j<COLS; j++) {
+        	for (int j=0; j<COLS; ++j) {
 
         		// Create each label
         		JLabel lbl = new JLabel(emptyImage);
         		lbl.setPreferredSize( new Dimension(50, 50) );
         		lbl.setBorder( BorderFactory.createLineBorder(Color.black) );
 
+        		// Use the OthelloBoard for determining initial game states
+        		switch ( m_othello.getSquare(i, j) ) {
+				case OthelloBoard.WHITE:
+					lbl.setIcon(whiteImage);
+					break;
+				case OthelloBoard.BLACK:
+					lbl.setIcon(blackImage);
+					break;
+				}
+
         		// Click Listener
-        		final int ii = i;
-        		final int jj = j;
+        		final int x = i;
+        		final int y = j;
         		lbl.addMouseListener( new MouseAdapter() {
         			public void mousePressed(MouseEvent e) {
-        				System.out.println("Clicked " + ii + ":" + jj);
+
+        				// Debug
+        				System.out.println("Clicked " + x + ":" + y);
+
+        				// When it is a Legal Move
+        				if ( m_othello.moveIsLegal(x, y, m_player) ) {
+        					System.out.println("GOOD");
+        					m_othello.makeMove(x, y, m_player);
+        					togglePlayer();
+        					updateBoard();
+        				}
+
         			}
         		});
 
@@ -73,14 +103,36 @@ public class BasicGui extends JPanel {
 			}
         }
 
-        // Initial Board configuration
-        m_gameboard[3][3].setIcon( blackImage );
-        m_gameboard[4][4].setIcon( blackImage );
-        m_gameboard[3][4].setIcon( whiteImage );
-        m_gameboard[4][3].setIcon( whiteImage );
 
     }
 
+    /**
+     * Redraw the board
+     */
+    private void updateBoard() {
+        for (int x=0; x<ROWS; ++x) {
+        	for (int y=0; y<COLS; ++y) {
+        		switch ( m_othello.getSquare(x, y) ) {
+        		case OthelloBoard.EMPTY:
+        			m_gameboard[x][y].setIcon(emptyImage);
+					break;
+				case OthelloBoard.WHITE:
+					m_gameboard[x][y].setIcon(whiteImage);
+					break;
+				case OthelloBoard.BLACK:
+					m_gameboard[x][y].setIcon(blackImage);
+					break;
+				}
+        	}
+        }
+    }
+
+    /**
+     * Toggle the player
+     */
+    private void togglePlayer() {
+    	m_player = m_player == OthelloBoard.WHITE ? OthelloBoard.BLACK : OthelloBoard.WHITE;
+    }
 
 
     /**
