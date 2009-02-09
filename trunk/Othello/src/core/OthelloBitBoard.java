@@ -1,57 +1,58 @@
 package core;
+
 /**
- *
+ * 
  */
 
 /**
  * Bitboard data structure implementation of OthelloBoard
- *
+ * 
  * this data structure, although dense and hard to read, is needed for
- * 'industrial strength' rapid move generation and move execution.
- *
+ * 'industrial stength' rapid move generation and move execution.
+ * 
  * Notations used in this file:
  * Rx : Row x on the board
  * Cx : Column x on the board
  * DA0 : Ascending Diagonal (no offset)
  * DD0 : Descending Diagonal (no offset)
- *
+ * 
  * @author Nicholas Ver Hoeve
  */
 public class OthelloBitBoard implements OthelloBoard {
 	public long white;
 	public long black;
-
+	
 	/**
 	 * construct new board with the initial game position
 	 */
 	public OthelloBitBoard() {
 		newGame();
 	}
-
+	
 	/**
 	 * construct new board from a bitboard of each piece type
-	 *
-	 * @param white : bitboard corresponding to white piece placement
-	 * @param black : bitboard corresponding to black piece placement
+	 * 
+	 * @param white : bitboard corrosponding to white piece placement
+	 * @param black : bitboard corrosponding to black peice placement
 	 */
 	public OthelloBitBoard(long white, long black) {
 		this.white = white;
 		this.black = black;
 	}
-
+	
 	/**
 	 * Copy an OthelloBitBoard
-	 *
+	 * 
 	 * @param toCopy
 	 */
 	public OthelloBitBoard(OthelloBitBoard toCopy) {
 		white = toCopy.white;
 		black = toCopy.black;
 	}
-
+	
 	/**
 	 * merges x, y coordinate pairs into a single value, (0-63)
-	 *
+	 * 
 	 * @param x : x coordinate, (0, 7)
 	 * @param y : y coordinate, (0, 7)
 	 * @return an index, in range 0-63
@@ -59,30 +60,30 @@ public class OthelloBitBoard implements OthelloBoard {
 	static int xyMerge(int x, int y) {
 		return x | (y << 3);
 	}
-
+	
 	/**
 	 * extracts x coordinate from an 'xy' int
-	 *
+	 * 
 	 * @param xy : position (0-63)
 	 * @return extracted x coordinate
 	 */
 	static int xyTox(int xy) {
 		return xy & 7;
 	}
-
+	
 	/**
 	 * extracts y coordinate from an 'xy' int
-	 *
+	 * 
 	 * @param xy : position (0-63)
 	 * @return extracted y coordinate
 	 */
 	static int xyToy(int xy) {
 		return xy >> 3;
 	}
-
+	
 	/**
 	 * remaps the bit values in C1 to be the bit values of R1
-	 *
+	 * 
 	 * @param x : the bitboard
 	 * @return new bitboard
 	 */
@@ -91,14 +92,14 @@ public class OthelloBitBoard implements OthelloBoard {
 		x |= x >> 28;
 		x |= x >> 14;
 		x |= x >> 7;
-
+		
 		return (int)x & 0xFF;
 	}
-
+	
 	/**
-	 * remaps the bit values in DA0 (the ascending diagonal) to be the bit
+	 * remaps the bit values in DA0 (the ascending diagonal) to be the bit 
 	 * values of R1
-	 *
+	 * 
 	 * @param x : the bitboard
 	 * @return new bitboard
 	 */
@@ -109,11 +110,11 @@ public class OthelloBitBoard implements OthelloBoard {
 		x |= x >> 8;
 		return (int)x & 0xFF;
 	}
-
+	
 	/**
-	 * remaps the bit values in DD0 (the descending diagonal) to be the bit
+	 * remaps the bit values in DD0 (the descending diagonal) to be the bit 
 	 * values of R1
-	 *
+	 * 
 	 * @param x : the bitboard
 	 * @return new bitboard
 	 */
@@ -124,11 +125,11 @@ public class OthelloBitBoard implements OthelloBoard {
 		x |= x >> 8;
 		return (int)x & 0xFF;
 	}
-
+	
 	/**
 	 * remaps the bit values in R1 to be the bit values of C1
-	 * the output is empty except for C1.
-	 *
+	 * the output is empty except for C1.  
+	 * 
 	 * @param x : the bitboard
 	 * @return new bitboard
 	 */
@@ -136,42 +137,42 @@ public class OthelloBitBoard implements OthelloBoard {
 		x |= (x & 0xAA) << 7;
 		x |= (x & 0x4444) << 14;
 		long z = (long)x | ((long)(x & 0x10101010) << 28);
-
+		
 		return z & 0x0101010101010101L;
 	}
-
+	
 	/**
-	 * remaps the bit values in R1 to be the bit values of DA0
+	 * remaps the bit values in R1 to be the bit values of DA0 
 	 * (ascending diagonal)
-	 * the output is empty except for DA0.
-	 *
+	 * the output is empty except for DA0.  
+	 * 
 	 * @param x : the bitboard
-	 * @return new bitboard
+	 * @return new bitboard 
 	 */
 	private static long mapR1toDA0(int x) {
 		x |= (x & 0xAA) << 8;
 		long z = ((long)x) | (((long)(x & 0x8844)) << 16);
 		z |= (z & 0x80402010) << 32;
-
+		
 		return z & 0x8040201008040201L;
 	}
-
+	
 	/**
-	 * remaps the bit values in R1 to be the bit values of DD0
+	 * remaps the bit values in R1 to be the bit values of DD0 
 	 * (descending diagonal)
-	 * the output is empty except for DD0.
-	 *
+	 * the output is empty except for DD0.  
+	 * 
 	 * @param x : the bitboard
-	 * @return new bitboard
+	 * @return new bitboard 
 	 */
 	private static long mapR1toDD0(int x) {
 		x |= (x & 0x55) << 8;
 		x |= (x & 0x1122) << 16;
 		long z = (long)x | ((long)(x & 0x1020408) << 32);
-
+		
 		return z & 0x0102040810204080L;
 	}
-
+	
 	/**
 	 * empties the board
 	 */
@@ -191,7 +192,7 @@ public class OthelloBitBoard implements OthelloBoard {
 			return BitUtil.countSetBits(black);
 		}
 	}
-
+	
 	/**
 	 * @param state : set as either WHITE or BLACK
 	 * @return true if this player can make a move
@@ -203,7 +204,7 @@ public class OthelloBitBoard implements OthelloBoard {
 				return true;
 			}
 		}
-
+		
 		return false;
 	}
 
@@ -215,9 +216,9 @@ public class OthelloBitBoard implements OthelloBoard {
 	}
 
 	/**
-	 * Simply sets the state of the square (x, y).
+	 * Simply sets the state of the square (x, y). 
 	 * Does not verify the legality of the move in any way
-	 *
+	 * 
 	 * @param x : horizontal coordinate (0-7)
 	 * @param y : vertical coordinate (0-7)
 	 */
@@ -230,7 +231,7 @@ public class OthelloBitBoard implements OthelloBoard {
 	/**
 	 * Performs a move and all updating involved in an in-game move.
 	 * The move is assumed to be legal.
-	 *
+	 * 
 	 * @param x : proposed horizontal coordinate (0-7)
 	 * @param y : proposed vertical coordinate (0-7)
 	 * @param state : set as either WHITE or BLACK
@@ -240,13 +241,13 @@ public class OthelloBitBoard implements OthelloBoard {
 		white = newBoard.white;
 		black = newBoard.black;
 	}
-
+	
 	/**
 	 * Creates a copy of the game with a move applied.
 	 * Performs a move and all updating involved in an in-game move.
 	 * The move is assumed to be legal.
 	 * Aggressively optimized for speed.
-	 *
+	 * 
 	 * @param x : proposed horizontal coordinate (0-7)
 	 * @param y : proposed vertical coordinate (0-7)
 	 * @param state : set as either WHITE or BLACK
@@ -255,7 +256,7 @@ public class OthelloBitBoard implements OthelloBoard {
 	public OthelloBitBoard copyAndMakeMove(int x, int y, int state) {
 		long cColor; // current color (color of who's turn it is)
 		long eColor; // enemy color
-
+		
 		if (state == WHITE) {
 			cColor = white;
 			eColor = black;
@@ -263,14 +264,14 @@ public class OthelloBitBoard implements OthelloBoard {
 			cColor = black;
 			eColor = white;
 		}
-
+		
 		int cRow;
 		int eRow;
-
+		
 		//this mask has a set bit for each position on the board that will be
-		//wholly unaffected by this move. Affected bit positions are cleared.
+		//wholly unnaffected by this move. Affected bit positions are cleared.
 		long unmodifiedMask = ~Rom.ALLDIRECTIONLOOKUP[xyMerge(x, y)];
-
+		
 		long finalCColor = cColor & unmodifiedMask;
 		long finalEColor = eColor & unmodifiedMask;
 
@@ -281,7 +282,7 @@ public class OthelloBitBoard implements OthelloBoard {
 		eRow &= ~cRow;
 		finalCColor |= ((long)cRow << (8*y));
 		finalEColor |= ((long)eRow << (8*y));
-
+	
 		//compute column modifications
 		cRow = mapC1toR1(cColor >>> x);
 		eRow = mapC1toR1(eColor >>> x);
@@ -289,7 +290,7 @@ public class OthelloBitBoard implements OthelloBoard {
 		eRow &= ~cRow;
 		finalCColor |= mapR1toC1(cRow) << x;
 		finalEColor |= mapR1toC1(eRow) << x;
-
+		
 		//compute DA0 modifications
 		byte shiftDistance = (byte)((x - y) << 3);
 		cRow = mapDA0ToR1(BitUtil.signedLeftShift(cColor, shiftDistance));
@@ -298,7 +299,7 @@ public class OthelloBitBoard implements OthelloBoard {
 		eRow &= ~cRow;
 		finalCColor |= BitUtil.signedLeftShift(mapR1toDA0(cRow), (byte)-shiftDistance);
 		finalEColor |= BitUtil.signedLeftShift(mapR1toDA0(eRow), (byte)-shiftDistance);
-
+		
 		//compute DD0 modifications
 		shiftDistance = (byte)((7 - x - y) << 3); // distance needed to map to DD0
 		cRow = mapDD0ToR1(BitUtil.signedLeftShift(cColor, shiftDistance));
@@ -307,7 +308,7 @@ public class OthelloBitBoard implements OthelloBoard {
 		eRow &= ~cRow;
 		finalCColor |= BitUtil.signedLeftShift(mapR1toDD0(cRow), (byte)-shiftDistance);
 		finalEColor |= BitUtil.signedLeftShift(mapR1toDD0(eRow), (byte)-shiftDistance);
-
+		
 		if (state == WHITE) {
 			return new OthelloBitBoard(finalCColor, finalEColor);
 		} else {
@@ -318,7 +319,7 @@ public class OthelloBitBoard implements OthelloBoard {
 	/**
 	 * Test to see if player 'state' (BLACK or WHITE) can move at (x, y)
 	 * Aggressively optimized for speed.
-	 *
+	 * 
 	 * @param x: proposed x coordinate
 	 * @param y: proposed y coordinate
 	 * @param state: WHITE or BLACK
@@ -327,7 +328,7 @@ public class OthelloBitBoard implements OthelloBoard {
 	public boolean moveIsLegal(int x, int y, int state) {
 		long cColor; // current color (color of who's turn it is)
 		long eColor; // enemy color
-
+		
 		if (state == WHITE) {
 			cColor = white;
 			eColor = black;
@@ -335,24 +336,24 @@ public class OthelloBitBoard implements OthelloBoard {
 			cColor = black;
 			eColor = white;
 		}
-
+		
 		int cRow;
 		int eRow;
-
+		
 		//check for capture on row
 		cRow = (int)(cColor >>> (8*y)) & 0xFF;
 		eRow = (int)(eColor >>> (8*y)) & 0xFF;
 		if (computeRowEffect(cRow, eRow, x) != cRow) {
 			return true;
 		}
-
+		
 		//check for capture on column
 		cRow = mapC1toR1(cColor >>> x);
 		eRow = mapC1toR1(eColor >>> x);
 		if (computeRowEffect(cRow, eRow, y) != cRow) {
 			return true;
 		}
-
+		
 		//check for capture on ascending diagonal
 		byte shiftDistance = (byte)((x - y) << 3); // distance needed to map to DA0
 		cRow = mapDA0ToR1(BitUtil.signedLeftShift(cColor, shiftDistance));
@@ -360,7 +361,7 @@ public class OthelloBitBoard implements OthelloBoard {
 		if (computeRowEffect(cRow, eRow, x) != cRow) {
 			return true;
 		}
-
+		
 		//check for capture on descending diagonal
 		shiftDistance = (byte)((7 - x - y) << 3); // distance needed to map to DD0
 		cRow = mapDD0ToR1(BitUtil.signedLeftShift(cColor, shiftDistance));
@@ -368,15 +369,15 @@ public class OthelloBitBoard implements OthelloBoard {
 		if (computeRowEffect(cRow, eRow, x) != cRow) {
 			return true;
 		}
-
+		
 		return false;
 	}
-
+	
 	/**
 	 * private table-lookup function. Given a row of friendly and enemy pieces,
 	 * and a proposed square to move, what will happen to the row? The answer
 	 * is stored in the table.
-	 *
+	 * 
 	 * @param mRow : 8-bit bitboard corrosponding to friendly pieces
 	 * @param eRow : 8-bit bitboard corrosponding to enemy pieces
 	 * @param pos : proposed place to move
@@ -395,15 +396,15 @@ public class OthelloBitBoard implements OthelloBoard {
 	}
 
 	/**
-	 * Simply sets the state of the square (x, y).
+	 * Simply sets the state of the square (x, y). 
 	 * Does not verify the legality of the move in any way
-	 *
+	 * 
 	 * @param x : horizontal coordinate (0-7)
 	 * @param y : vertical coordinate (0-7)
 	 */
 	public void setSquare(int x, int y, int state) {
 		long v = (1L << xyMerge(x, y));
-
+		
 		switch (state) {
 		case WHITE:
 			white |= v;
@@ -418,23 +419,23 @@ public class OthelloBitBoard implements OthelloBoard {
 			break;
 		}
 	}
-
+	
 	/**
 	 * generates a bitboard where each bit is 'likely' a legal move.
-	 *
+	 * 
 	 * @param state : BLACK or WHITE
 	 * @return all bits that are empty squares and next to an enemy piece
 	 */
 	public long generateLikelyMoves(int state) {
 		long emptySpace = ~(white | black);
-
+		
 		if (state == WHITE) {
 			return fillNeighbors(black) & emptySpace;
 		} else {
 			return fillNeighbors(white) & emptySpace;
 		}
 	}
-
+	
 	/**
 	 * @param v : original bitboard
 	 * @return new bitboard that is all of the adjacent bits to every bit in v
@@ -446,7 +447,10 @@ public class OthelloBitBoard implements OthelloBoard {
 		v |= (v >> 8);
 		return v;
 	}
-
+	
+	/**
+	 * @override
+	 */
 	public boolean equals(Object other) {
 		if (!(other instanceof OthelloBitBoard)) {
 			return false;
@@ -455,15 +459,15 @@ public class OthelloBitBoard implements OthelloBoard {
 		OthelloBitBoard o = (OthelloBitBoard)other;
 		return white == o.white && black == o.black;
 	}
-
+	
 	/**
 	 * This technique is inspired by zobrist hashing. Zobrist hashing is too slow
-	 * when we cannot do 'incremental updating', and Othello's moving style makes
+	 * when we cannot do 'incremental updating', and Othello's moving style makes 
 	 * sure we can't easily do that.
-	 *
+	 * 
 	 * This is a technique that should run faster than a zobrist hash when hashing
 	 * from scratch.
-	 *
+	 * 
 	 * @return : a hash code
 	 */
 	public int hashCode() {
@@ -471,39 +475,44 @@ public class OthelloBitBoard implements OthelloBoard {
 		int whi = (int)(white >>> 32);
 		int blo = (int)black;
 		int bhi = (int)(black >>> 32);
-
+		
 		return Rom.NOISEA[wlo & 0xFF] ^ Rom.NOISEB[(wlo >>> 8) & 0xFF] ^
-			Rom.NOISEC[(wlo >> 16) & 0xFF] ^ Rom.NOISED[(wlo >>> 24) & 0xFF] ^
+			Rom.NOISEC[(wlo >> 16) & 0xFF] ^ Rom.NOISED[(wlo >>> 24) & 0xFF] ^ 
 			Rom.NOISEC[~whi & 0xFF] ^ Rom.NOISEA[(~whi >>> 8) & 0xFF] ^
-			Rom.NOISED[(~whi >> 16) & 0xFF] ^ Rom.NOISED[(~whi >>> 24) & 0xFF] ^
+			Rom.NOISED[(~whi >> 16) & 0xFF] ^ Rom.NOISED[(~whi >>> 24) & 0xFF] ^ 
 			Rom.NOISEC[blo & 0xFF] ^ Rom.NOISEA[(blo >>> 8) & 0xFF] ^
-			Rom.NOISEB[(blo >> 16) & 0xFF] ^ Rom.NOISED[(blo >>> 24) & 0xFF] ^
+			Rom.NOISEB[(blo >> 16) & 0xFF] ^ Rom.NOISED[(blo >>> 24) & 0xFF] ^ 
 			Rom.NOISED[~bhi & 0xFF] ^ Rom.NOISEB[(~bhi >>> 8) & 0xFF] ^
 			Rom.NOISEA[(~bhi >> 16) & 0xFF] ^ Rom.NOISEB[(~bhi >>> 24) & 0xFF];
 	}
-
+	
+	/**
+	* @override
+	*/
 	public String toString() {
 		return "[" + Long.toHexString(white) + ", " + Long.toHexString(black) + "]";
 	}
 
 	/**
 	 * test-drive the bitboard engine
-	 *
+	 * 
 	 * @param args
 	 */
 	public static void main(String[] args) {
 		final int numTests = 40;
-
+		
 		OthelloBitBoard testBoardA = new OthelloBitBoard(0x00000010081C0000L, 0x0000000000020200L);
 		OthelloBitBoard testBoardB = new OthelloBitBoard(0x1020000001801400L, 0x0018102204080000L);
 		OthelloBitBoard testBoardC = new OthelloBitBoard(0x30C8A298A69C8870L, 0xF801000041000009L);
 		OthelloBitBoard testBoardD = new OthelloBitBoard(0x00000038180C0001L, 0x0000000000030204L);
 		OthelloBitBoard testBoardE = new OthelloBitBoard(0xFF9F8D1D0D0F07D9L, 0x004002828200C824L);
+		OthelloBitBoard testBoardF = new OthelloBitBoard(0xFF00000000000000L, 0x00000000000000FFL);
 
+		
 		for (int i = 0; i < numTests; ++i) {
 			Object output = null;
 			Object expectedOutput = null;
-
+			
 			switch (i) {
 			case 0:
 				output = new Boolean(testBoardA.moveIsLegal(5, 5, BLACK));
@@ -569,29 +578,53 @@ public class OthelloBitBoard implements OthelloBoard {
 				output = testBoardE.copyAndMakeMove(1, 0, WHITE);
 				expectedOutput = new OthelloBitBoard(0xFF9F8D1D0D0F07DFL, 0x004002828200C820L);
 				break;
+			case 16:
+				output = new Boolean(testBoardA.gameIsSet());
+				expectedOutput = new Boolean(false);
+				break;
+			case 17:
+				output = new Boolean(testBoardB.gameIsSet());
+				expectedOutput = new Boolean(false);
+				break;
+			case 18:
+				output = new Boolean(testBoardC.gameIsSet());
+				expectedOutput = new Boolean(false);
+				break;
+			case 19:
+				output = new Boolean(testBoardD.gameIsSet());
+				expectedOutput = new Boolean(false);
+				break;
+			case 20:
+				output = new Boolean(testBoardE.gameIsSet());
+				expectedOutput = new Boolean(false);
+				break;
+			case 21:
+				output = new Boolean(testBoardF.gameIsSet());
+				expectedOutput = new Boolean(true);
+				break;
 			default:
 				continue;
 			}
-
+			
 			if (output == null) {
 				break;
 			}
-
+			
 			boolean fail = false;
 			System.out.println("Test " + i + ":");
-
+			
 			if (!output.equals(expectedOutput)) {
 				fail = true;
 				System.out.println("\tOutput: " + output.toString());
 				System.out.println("\tExpected Output: " + expectedOutput.toString());
 			}
-
+			
 			if (!fail) {
 				System.out.println("\tPassed!");
 			}
-
+			
 		}
-
+		
 	}
 
 }
