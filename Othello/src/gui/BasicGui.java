@@ -2,14 +2,19 @@ package gui;
 
 import javax.swing.JPanel;
 
+import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.FlowLayout;
 import java.awt.GridLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 
 import javax.swing.BorderFactory;
 import javax.swing.ImageIcon;
+import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JFrame;
 import javax.swing.UIManager;
@@ -27,6 +32,7 @@ public class BasicGui extends JPanel {
 
 	/** Game board **/
 	private JLabel[][] m_gameboard;
+	private JLabel m_feedback;
 	private OthelloBoard m_othello;
 	private int m_player;
 
@@ -44,8 +50,30 @@ public class BasicGui extends JPanel {
 	 */
     public BasicGui() {
 
-    	// 8x8 Game Board (rows x cols)
-        super(new GridLayout(ROWS, COLS));
+    	// Container for all the panels
+        super(new BorderLayout());
+
+        // 8x8 Game Board (rows x cols)
+        JPanel grid = new JPanel( new GridLayout(ROWS, COLS) );
+
+        // Feedback Panel
+        JPanel feedback = new JPanel( new FlowLayout() );
+        m_feedback = new JLabel("Welcome to Othello");
+        feedback.add(m_feedback);
+
+        // Options Panel
+        JPanel options = new JPanel( new FlowLayout() );
+        JButton reset = new JButton("Reset");
+        options.add(reset);
+        reset.addActionListener( new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				m_othello.newGame();
+				m_feedback.setText("New Game");
+				updateBoard();
+				m_player = m_othello.canMove( OthelloBoard.BLACK ) ? OthelloBoard.BLACK : OthelloBoard.WHITE;
+			}
+        });
+
 
         // Constructor creates a new game automatically
         m_othello = new OthelloBitBoard();
@@ -91,11 +119,15 @@ public class BasicGui extends JPanel {
         					togglePlayer();
         					updateBoard();
 
+        					// Update the game board
+        					int black = m_othello.countPieces(OthelloBoard.BLACK);
+        					int white = m_othello.countPieces(OthelloBoard.WHITE);
+        					String str = "Score is Black (" + black + ") and White (" + white + ")";
+        					m_feedback.setText(str);
+
             				// Game is over
             				// TODO: For now it prints results to stdout
             				if ( m_othello.gameIsSet() ) {
-            					int black = m_othello.countPieces(OthelloBoard.BLACK);
-            					int white = m_othello.countPieces(OthelloBoard.WHITE);
             					System.out.println("Results:");
             					System.out.println("Black: " + black);
             					System.out.println("White: " + white);
@@ -103,15 +135,26 @@ public class BasicGui extends JPanel {
 
         				}
 
+        				// Illegal Move
+        				else {
+        					m_feedback.setText("Invalid Move");
+        				}
+
         			}
         		});
 
         		// Add to the game board and display
 				m_gameboard[i][j] = lbl;
-				add( m_gameboard[i][j] );
+				grid.add( m_gameboard[i][j] );
 
 			}
         }
+
+
+        // Add the Grid, Feedback, and Options Panes
+        add(grid, BorderLayout.NORTH);
+        add(feedback, BorderLayout.CENTER);
+        add(options, BorderLayout.SOUTH);
 
 
     }
@@ -137,6 +180,7 @@ public class BasicGui extends JPanel {
         }
     }
 
+
     /**
      * Toggle the player
      */
@@ -153,6 +197,7 @@ public class BasicGui extends JPanel {
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.add(new BasicGui());
         frame.pack();
+        frame.setResizable(false);
         frame.setVisible(true);
     }
 
