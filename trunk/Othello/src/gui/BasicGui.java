@@ -87,10 +87,20 @@ public class BasicGui extends JPanel {
 
         				// When it is a Legal Move
         				if ( m_othello.moveIsLegal(x, y, m_player) ) {
-        					System.out.println("GOOD");
         					m_othello.makeMove(x, y, m_player);
         					togglePlayer();
         					updateBoard();
+
+            				// Game is over
+            				// TODO: For now it prints results to stdout
+            				if ( m_othello.gameIsSet() ) {
+            					int black = m_othello.countPieces(OthelloBoard.BLACK);
+            					int white = m_othello.countPieces(OthelloBoard.WHITE);
+            					System.out.println("Results:");
+            					System.out.println("Black: " + black);
+            					System.out.println("White: " + white);
+            				}
+
         				}
 
         			}
