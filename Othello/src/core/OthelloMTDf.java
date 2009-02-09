@@ -19,8 +19,8 @@ public class OthelloMTDf extends OthelloAlphaBeta {
 	 * @param turn : current player turn
 	 * @return
 	 */
-	int searchMTDf(OthelloBitBoard position, int turn) {
-		return searchMTDf(position, 0, turn);
+	int searchMTDf() {
+		return searchMTDf(0);
 	}
 	
 	/**
@@ -31,7 +31,7 @@ public class OthelloMTDf extends OthelloAlphaBeta {
 	 * @param turn : current player turn (WHITE or BLACK)
 	 * @return
 	 */
-	int searchMTDf(OthelloBitBoard position, int guess, int turn) {
+	int searchMTDf(int guess) {
 		int alpha = LOWESTSCORE;
 		int beta  = HIGHESTSCORE;
 		int nullWindow;
@@ -44,8 +44,7 @@ public class OthelloMTDf extends OthelloAlphaBeta {
 			}
 
 			//null window search about the guess
-			guess = alphaBetaSearch(position, 
-					nullWindow-1, nullWindow, turn);
+			guess = alphaBetaSearch(nullWindow-1, nullWindow);
 			
 			if (guess < nullWindow) { // if it failed low
 				beta = guess;
@@ -54,6 +53,7 @@ public class OthelloMTDf extends OthelloAlphaBeta {
 			}
 		} while (alpha < beta); // do until window converges
 		
+		scoreOfConfiguration = guess;
 		return guess;
 	}
 	
@@ -64,7 +64,7 @@ public class OthelloMTDf extends OthelloAlphaBeta {
 	 * @param turn : current player turn (WHITE or BLACK)
 	 * @return
 	 */
-	int iterativeMTDf(OthelloBitBoard position, int turn) {
+	int iterativeMTDf() {
 		int guess = 0;
 		
 		int finalMaxDepth = maxSearchDepth;
@@ -72,9 +72,9 @@ public class OthelloMTDf extends OthelloAlphaBeta {
 		//repeat for 2, 4, 6, 8, etc depth
 		//transposition table will retain some results
 		for (maxSearchDepth = 0; maxSearchDepth <= finalMaxDepth; maxSearchDepth += 2) {
-			guess = searchMTDf(position, guess, turn);
+			guess = searchMTDf(guess);
 		}
-		 
+		
 		return guess;
 	}
 	
@@ -92,8 +92,9 @@ public class OthelloMTDf extends OthelloAlphaBeta {
 		testObj.setMaxSearchDepth(12);
 		testObj.setLevelsToSort(3);
 		testObj.setMinDepthToStore(4);
+		testObj.setRootNode(test1, WHITE);
 
-		int score = testObj.iterativeMTDf(test1, OthelloBitBoard.WHITE);
+		int score = testObj.iterativeMTDf();
 		
 		System.out.println("score: " + score);
 		System.out.println("leaf nodes: " + testObj.getLeafCount());
