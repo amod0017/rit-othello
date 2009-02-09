@@ -211,7 +211,7 @@ public class OthelloBitBoard implements OthelloBoard {
 	 * @return true if the game is over (neither player can move)
 	 */
 	public boolean gameIsSet() {
-		return canMove(WHITE) || canMove(BLACK);
+		return !(canMove(WHITE) || canMove(BLACK));
 	}
 
 	/**
