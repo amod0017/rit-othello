@@ -72,7 +72,7 @@ public class BasicGui extends JPanel {
 				m_othello.newGame();
 				m_feedback.setText("New Game");
 				updateBoard();
-				m_player = m_othello.canMove( OthelloBoard.BLACK ) ? OthelloBoard.BLACK : OthelloBoard.WHITE;
+				m_player = OthelloBoard.BLACK;
 			}
         });
 
@@ -200,13 +200,14 @@ public class BasicGui extends JPanel {
     private void togglePlayer() {
     	m_player = m_player == OthelloBoard.WHITE ? OthelloBoard.BLACK : OthelloBoard.WHITE;
     	
-    	if ( m_aiActive[m_player] ) {
+    	if ( m_aiActive[m_player] && !m_othello.gameIsSet() ) {
     		( new Thread() {
 	    			public void run() {
 	    				OthelloMTDf aiObject = new OthelloMTDf();
 	    				aiObject.setMaxSearchDepth(10);
 	    				aiObject.setRootNode(m_othello, m_player);
-	    				aiObject.iterativeMTDf();
+	    				int score = aiObject.iterativeMTDf(); // perform main search
+	    				System.out.println("Score result: " + score);
 	    				int move = aiObject.retreiveBestMove();
 	    				if (move != -1) {
 	    					makeMove(OthelloMTDf.xyTox(move), OthelloMTDf.xyToy(move));

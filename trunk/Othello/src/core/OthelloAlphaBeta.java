@@ -20,12 +20,12 @@ public class OthelloAlphaBeta {
 	
 	//int maxTableSize = 
 	
-	static final int NOSCORE = 0x80000000;
-	static final int LOWESTSCORE = 0x80000001;
-	static final int HIGHESTSCORE = 0x7FFFFFFF;
+	public static final int NOSCORE = 0x80000000;
+	public static final int LOWESTSCORE = 0x80000001;
+	public static final int HIGHESTSCORE = 0x7FFFFFFF;
 	
-	static final int WHITE = 0;
-	static final int BLACK = 1;
+	public static final int WHITE = 0;
+	public static final int BLACK = 1;
 	
 	//counters
 	int leafCount = 0;
@@ -115,24 +115,31 @@ public class OthelloAlphaBeta {
 	OthelloAlphaBeta() {
 		transpositionTable = new HashMap<BoardAndDepth, Window>(maxTableEntries);
 	}
+
+	/**
+	 * negamax search with Alpha-beta pruning, all features and full window
+	 * scans the root node stored in this object
+	 * 
+	 * @return the value of the best score found
+	 */
+	public int alphaBetaSearch() {
+		return scoreOfConfiguration = alphaBetaSearch(LOWESTSCORE, HIGHESTSCORE);
+	}
 	
 	/**
 	 * negamax search with Alpha-beta pruning, all features
+	 * scans the root node stored in this object
 	 * 
-	 * @param position : current position to analyze
 	 * @param alpha : lower bound on the window
 	 * @param beta : upper bound on the window
-	 * @param turn : current turn (WHITE or BLACK)
 	 * @return the value of the best score found
 	 */
-	public int alphaBetaSearch(int alpha, int beta) {
+	protected int alphaBetaSearch(int alpha, int beta) {
 		if (levelsToSort <= 0) {
-			scoreOfConfiguration = alphaBetaNoSort(rootNode, alpha, beta, rootNodeTurn, maxSearchDepth);
+			return alphaBetaNoSort(rootNode, alpha, beta, rootNodeTurn, maxSearchDepth);
 		} else {
-			scoreOfConfiguration = alphaBetaSorted(rootNode, alpha, beta, rootNodeTurn, maxSearchDepth);
+			return alphaBetaSorted(rootNode, alpha, beta, rootNodeTurn, maxSearchDepth);
 		}
-		
-		return scoreOfConfiguration;
 	}
 	
 	/**
@@ -532,8 +539,13 @@ public class OthelloAlphaBeta {
 				bestMove = movePos;
 				
 				if (bestScore >= beta) {
-					System.err.println("Error: failed to retreive move! Score input was incorrect...?");
+					System.err.println("Error: failed to retreive move." + 
+							"Score was incorrect. Real score was >= " + beta);
 					return -1;
+				}
+				
+				if (newScore == scoreOfConfiguration) {
+					break; // we've found a sufficient score
 				}
 			}	
 		}
