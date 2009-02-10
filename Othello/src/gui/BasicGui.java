@@ -204,7 +204,20 @@ public class BasicGui extends JPanel {
     		( new Thread() {
 	    			public void run() {
 	    				OthelloMTDf aiObject = new OthelloMTDf();
-	    				aiObject.setMaxSearchDepth(10);
+	    				
+	    				int totalPieces = m_othello.countPieces(OthelloBoard.WHITE) +
+	    					m_othello.countPieces(OthelloBoard.BLACK);
+	    				
+	    				if (totalPieces > 5 && totalPieces <= 10) {
+	    					aiObject.setMaxSearchDepth(12);
+	    				} else if (totalPieces > 46) {
+	    					aiObject.setMaxSearchDepth(12);
+	    				} else if (totalPieces > 50) {
+	    					aiObject.setMaxSearchDepth(14);
+	    				} else {
+	    					aiObject.setMaxSearchDepth(10);
+	    				}
+	    				
 	    				aiObject.setRootNode(m_othello, m_player);
 	    				int score = aiObject.iterativeMTDf(); // perform main search
 	    				System.out.println("Score result: " + score);
