@@ -406,8 +406,8 @@ public class OthelloBitBoard implements OthelloBoard {
 	 * load the starting position of the game
 	 */
 	public void newGame() {
-		white = 0x0000000810000000L;
-		black = 0x0000001008000000L;
+		black = 0x0000000810000000L;
+		white = 0x0000001008000000L;
 	}
 
 	/**

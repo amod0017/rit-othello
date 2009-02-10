@@ -208,27 +208,29 @@ public class BasicGui extends JPanel {
 	    				int totalPieces = m_othello.countPieces(OthelloBoard.WHITE) +
 	    					m_othello.countPieces(OthelloBoard.BLACK);
 	    				
-	    				if (totalPieces > 5 && totalPieces <= 10) {
-	    					aiObject.setMaxSearchDepth(12);
-	    				} else if (totalPieces > 46) {
-	    					aiObject.setMaxSearchDepth(12);
-	    				} else if (totalPieces > 50) {
+	    				if ( totalPieces > 50 ) {
 	    					aiObject.setMaxSearchDepth(14);
+	    				} else if ( totalPieces > 46 ) {
+	    					aiObject.setMaxSearchDepth(13);
+	    				} else if ( totalPieces < 14 ) {
+	    					aiObject.setMaxSearchDepth(11);
+	    				} else if ( totalPieces == 6 ) {
+	    					aiObject.setMaxSearchDepth(13);
 	    				} else {
 	    					aiObject.setMaxSearchDepth(10);
 	    				}
 	    				
-	    				aiObject.setRootNode(m_othello, m_player);
+	    				aiObject.setRootNode( m_othello, m_player );
 	    				int score = aiObject.iterativeMTDf(); // perform main search
 	    				System.out.println("Score result: " + score);
 	    				int move = aiObject.retreiveBestMove();
 	    				if (move != -1) {
-	    					makeMove(OthelloMTDf.xyTox(move), OthelloMTDf.xyToy(move));
+	    					makeMove( OthelloMTDf.xyTox(move), OthelloMTDf.xyToy(move) );
 	    				} else {
 	    					// Set the next player
 	    					// If the next has no moves come back to this player
 	    					togglePlayer();
-	    					if ( !m_othello.canMove(m_player) ) {
+	    					if ( !m_othello.canMove( m_player ) ) {
 	    						togglePlayer();
 	    					}
 	    				}
