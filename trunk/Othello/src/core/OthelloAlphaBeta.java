@@ -492,7 +492,7 @@ public class OthelloAlphaBeta {
 	 * Performs a narrow-window search about a known score and returns the move instead
 	 * of the score.
 	 * 
-	 * @return the best move (0-63). Use OthelloBitBoard.xyTox() and OthelloBitBoard.xyToy() to
+	 * @return the best move (0-63). Use xyTox() and xyToy() to
 	 *  extract x and y values. Returns -1 in the event of an error.
 	 */
 	public int retreiveBestMove() {
@@ -544,6 +544,26 @@ public class OthelloAlphaBeta {
 		}
 		
 		return bestMove;
+	}
+	
+	/**
+	 * extracts x coordinate from an 'xy' int
+	 * 
+	 * @param xy : position (0-63)
+	 * @return extracted x coordinate
+	 */
+	public static int xyTox(int xy) {
+		return OthelloBitBoard.xyTox(xy);
+	}
+	
+	/**
+	 * extracts y coordinate from an 'xy' int
+	 * 
+	 * @param xy : position (0-63)
+	 * @return extracted y coordinate
+	 */
+	public static int xyToy(int xy) {
+		return OthelloBitBoard.xyToy(xy);
 	}
 
 	public int getLeafCount() {
