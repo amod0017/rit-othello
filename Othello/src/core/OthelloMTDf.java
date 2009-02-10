@@ -10,7 +10,13 @@ package core;
 public class OthelloMTDf extends OthelloAlphaBeta {
 	int passes = 0;
 	
-	public OthelloMTDf() { super(); }
+	public OthelloMTDf() { 
+		super(); 
+	}
+	
+	public OthelloMTDf(int tableSize) {
+		super(tableSize); 
+	}
 	
 	/**
 	 * MTD(f) search with default guess
@@ -45,6 +51,7 @@ public class OthelloMTDf extends OthelloAlphaBeta {
 
 			//null window search about the guess
 			guess = alphaBetaSearch(nullWindow-1, nullWindow);
+			//System.out.println("Window [" + (nullWindow - 1) + ", " + nullWindow + "] = " + guess);
 			
 			if (guess < nullWindow) { // if it failed low
 				beta = guess;
@@ -72,8 +79,11 @@ public class OthelloMTDf extends OthelloAlphaBeta {
 		//repeat for 2, 4, 6, 8, etc depth
 		//transposition table will retain some results
 		for (maxSearchDepth = 0; maxSearchDepth <= finalMaxDepth; maxSearchDepth += 2) {
+			//System.out.println("Searching at..." + maxSearchDepth);
 			guess = searchMTDf(guess);
 		}
+		
+		maxSearchDepth = finalMaxDepth;
 		
 		return guess;
 	}
