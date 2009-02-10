@@ -200,7 +200,7 @@ public class BasicGui extends JPanel {
     private void togglePlayer() {
     	m_player = m_player == OthelloBoard.WHITE ? OthelloBoard.BLACK : OthelloBoard.WHITE;
     	
-    	if ( m_aiActive[m_player] && !m_othello.gameIsSet() ) {
+    	if ( m_aiActive[m_player] && m_othello.canMove(m_player) ) {
     		( new Thread() {
 	    			public void run() {
 	    				OthelloMTDf aiObject = new OthelloMTDf();
