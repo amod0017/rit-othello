@@ -78,7 +78,9 @@ public class OthelloMTDf extends OthelloAlphaBeta {
 		
 		//repeat for 2, 4, 6, 8, etc depth
 		//transposition table will retain some results
-		for (maxSearchDepth = 0; maxSearchDepth <= finalMaxDepth; maxSearchDepth += 2) {
+		for (maxSearchDepth = (finalMaxDepth & 1); 
+			maxSearchDepth <= finalMaxDepth; 
+			maxSearchDepth += 2) {
 			//System.out.println("Searching at..." + maxSearchDepth);
 			guess = searchMTDf(guess);
 		}
