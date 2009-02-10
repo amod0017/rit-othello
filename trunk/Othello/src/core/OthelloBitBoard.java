@@ -97,12 +97,12 @@ public class OthelloBitBoard implements OthelloBoard {
 	}
 	
 	/**
-	 * remaps the bit values in C1 to be the bit values of R1
+	 * remaps the bit values in C0 to be the bit values of R0
 	 * 
 	 * @param x : the bitboard
 	 * @return new bitboard
 	 */
-	private static int mapC1toR1(long x) {
+	private static int mapC0toR0(long x) {
 		x &= 0x0101010101010101L;
 		x |= x >> 28;
 		x |= x >> 14;
@@ -113,12 +113,12 @@ public class OthelloBitBoard implements OthelloBoard {
 	
 	/**
 	 * remaps the bit values in DA0 (the ascending diagonal) to be the bit 
-	 * values of R1
+	 * values of R0
 	 * 
 	 * @param x : the bitboard
 	 * @return new bitboard
 	 */
-	private static int mapDA0ToR1(long x) {
+	private static int mapDA0ToR0(long x) {
 		x &= 0x8040201008040201L;
 		x |= x >> 32;
 		x |= x >> 16;
@@ -128,12 +128,12 @@ public class OthelloBitBoard implements OthelloBoard {
 	
 	/**
 	 * remaps the bit values in DD0 (the descending diagonal) to be the bit 
-	 * values of R1
+	 * values of R0
 	 * 
 	 * @param x : the bitboard
 	 * @return new bitboard
 	 */
-	private static int mapDD0ToR1(long x) {
+	private static int mapDD0ToR0(long x) {
 		x &= 0x0102040810204080L;
 		x |= x >> 32;
 		x |= x >> 16;
@@ -142,48 +142,48 @@ public class OthelloBitBoard implements OthelloBoard {
 	}
 	
 	/**
-	 * remaps the bit values in R1 to be the bit values of C1
-	 * the output is empty except for C1.  
+	 * remaps the bit values in R0 to be the bit values of C0
+	 * the output is empty except for C0.  
 	 * 
 	 * @param x : the bitboard
 	 * @return new bitboard
 	 */
-	private static long mapR1toC1(int x) {
-		x |= (x & 0xAA) << 7;
-		x |= (x & 0x4444) << 14;
-		long z = (long)x | ((long)(x & 0x10101010) << 28);
+	private static long mapR0toC0(int x) {
+		x |= x << 7;
+		x |= x << 14;
+		long z = (long)x | ((long)x << 28);
 		
 		return z & 0x0101010101010101L;
 	}
 	
 	/**
-	 * remaps the bit values in R1 to be the bit values of DA0 
+	 * remaps the bit values in R0 to be the bit values of DA0 
 	 * (ascending diagonal)
 	 * the output is empty except for DA0.  
 	 * 
 	 * @param x : the bitboard
 	 * @return new bitboard 
 	 */
-	private static long mapR1toDA0(int x) {
-		x |= (x & 0xAA) << 8;
-		long z = ((long)x) | (((long)(x & 0x8844)) << 16);
-		z |= (z & 0x80402010) << 32;
+	private static long mapR0toDA0(int x) {
+		x |= x << 8;
+		long z = (long)x | ((long)x << 16);
+		z |= z << 32;
 		
 		return z & 0x8040201008040201L;
 	}
 	
 	/**
-	 * remaps the bit values in R1 to be the bit values of DD0 
+	 * remaps the bit values in R0 to be the bit values of DD0 
 	 * (descending diagonal)
 	 * the output is empty except for DD0.  
 	 * 
 	 * @param x : the bitboard
 	 * @return new bitboard 
 	 */
-	private static long mapR1toDD0(int x) {
-		x |= (x & 0x55) << 8;
+	private static long mapR0toDD0(int x) {
+		x |= x << 8;
 		x |= (x & 0x1122) << 16;
-		long z = (long)x | ((long)(x & 0x1020408) << 32);
+		long z = (long)x | ((long)x << 32);
 		
 		return z & 0x0102040810204080L;
 	}
@@ -299,30 +299,30 @@ public class OthelloBitBoard implements OthelloBoard {
 		finalEColor |= ((long)eRow << (8*y));
 	
 		//compute column modifications
-		cRow = mapC1toR1(cColor >>> x);
-		eRow = mapC1toR1(eColor >>> x);
+		cRow = mapC0toR0(cColor >>> x);
+		eRow = mapC0toR0(eColor >>> x);
 		cRow = computeRowEffect(cRow, eRow, y);
 		eRow &= ~cRow;
-		finalCColor |= mapR1toC1(cRow) << x;
-		finalEColor |= mapR1toC1(eRow) << x;
+		finalCColor |= mapR0toC0(cRow) << x;
+		finalEColor |= mapR0toC0(eRow) << x;
 		
 		//compute DA0 modifications
 		byte shiftDistance = (byte)((x - y) << 3);
-		cRow = mapDA0ToR1(BitUtil.signedLeftShift(cColor, shiftDistance));
-		eRow = mapDA0ToR1(BitUtil.signedLeftShift(eColor, shiftDistance));
+		cRow = mapDA0ToR0(BitUtil.signedLeftShift(cColor, shiftDistance));
+		eRow = mapDA0ToR0(BitUtil.signedLeftShift(eColor, shiftDistance));
 		cRow = computeRowEffect(cRow, eRow, x);
 		eRow &= ~cRow;
-		finalCColor |= BitUtil.signedLeftShift(mapR1toDA0(cRow), (byte)-shiftDistance);
-		finalEColor |= BitUtil.signedLeftShift(mapR1toDA0(eRow), (byte)-shiftDistance);
+		finalCColor |= BitUtil.signedLeftShift(mapR0toDA0(cRow), (byte)-shiftDistance);
+		finalEColor |= BitUtil.signedLeftShift(mapR0toDA0(eRow), (byte)-shiftDistance);
 		
 		//compute DD0 modifications
 		shiftDistance = (byte)((7 - x - y) << 3); // distance needed to map to DD0
-		cRow = mapDD0ToR1(BitUtil.signedLeftShift(cColor, shiftDistance));
-		eRow = mapDD0ToR1(BitUtil.signedLeftShift(eColor, shiftDistance));
+		cRow = mapDD0ToR0(BitUtil.signedLeftShift(cColor, shiftDistance));
+		eRow = mapDD0ToR0(BitUtil.signedLeftShift(eColor, shiftDistance));
 		cRow = computeRowEffect(cRow, eRow, x);
 		eRow &= ~cRow;
-		finalCColor |= BitUtil.signedLeftShift(mapR1toDD0(cRow), (byte)-shiftDistance);
-		finalEColor |= BitUtil.signedLeftShift(mapR1toDD0(eRow), (byte)-shiftDistance);
+		finalCColor |= BitUtil.signedLeftShift(mapR0toDD0(cRow), (byte)-shiftDistance);
+		finalEColor |= BitUtil.signedLeftShift(mapR0toDD0(eRow), (byte)-shiftDistance);
 		
 		if (state == WHITE) {
 			return new OthelloBitBoard(finalCColor, finalEColor);
@@ -363,24 +363,24 @@ public class OthelloBitBoard implements OthelloBoard {
 		}
 		
 		//check for capture on column
-		cRow = mapC1toR1(cColor >>> x);
-		eRow = mapC1toR1(eColor >>> x);
+		cRow = mapC0toR0(cColor >>> x);
+		eRow = mapC0toR0(eColor >>> x);
 		if (computeRowEffect(cRow, eRow, y) != cRow) {
 			return true;
 		}
 		
 		//check for capture on ascending diagonal
 		byte shiftDistance = (byte)((x - y) << 3); // distance needed to map to DA0
-		cRow = mapDA0ToR1(BitUtil.signedLeftShift(cColor, shiftDistance));
-		eRow = mapDA0ToR1(BitUtil.signedLeftShift(eColor, shiftDistance));
+		cRow = mapDA0ToR0(BitUtil.signedLeftShift(cColor, shiftDistance));
+		eRow = mapDA0ToR0(BitUtil.signedLeftShift(eColor, shiftDistance));
 		if (computeRowEffect(cRow, eRow, x) != cRow) {
 			return true;
 		}
 		
 		//check for capture on descending diagonal
 		shiftDistance = (byte)((7 - x - y) << 3); // distance needed to map to DD0
-		cRow = mapDD0ToR1(BitUtil.signedLeftShift(cColor, shiftDistance));
-		eRow = mapDD0ToR1(BitUtil.signedLeftShift(eColor, shiftDistance));
+		cRow = mapDD0ToR0(BitUtil.signedLeftShift(cColor, shiftDistance));
+		eRow = mapDD0ToR0(BitUtil.signedLeftShift(eColor, shiftDistance));
 		if (computeRowEffect(cRow, eRow, x) != cRow) {
 			return true;
 		}
