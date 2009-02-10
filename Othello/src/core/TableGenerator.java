@@ -24,7 +24,7 @@ public class TableGenerator {
 		System.out.println("done");
 	}
 	
-	//generate text file of table
+	//generate binary file of table data
 	static void makeFormattedTableA() throws IOException {
 		int bytenum = 0;
 		

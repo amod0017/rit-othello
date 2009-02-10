@@ -22,6 +22,7 @@ import javax.swing.SwingUtilities;
 
 import core.OthelloBitBoard;
 import core.OthelloBoard;
+import core.OthelloMTDf;
 
 /**
  * Basic GUI to build board configurations.
@@ -35,6 +36,7 @@ public class BasicGui extends JPanel {
 	private JLabel m_feedback;
 	private OthelloBoard m_othello;
 	private int m_player;
+	private boolean[] m_aiActive = new boolean[]{true, false};
 
 	/** Constants **/
 	static final int ROWS = 8;
@@ -112,33 +114,14 @@ public class BasicGui extends JPanel {
         				// Debug
         				System.out.println("Clicked " + x + ":" + y);
 
-        				// Ignore Clicks if Game is over
-        				if ( m_othello.gameIsSet() ) {
+        				// Ignore Clicks if Game is over or AI is playing
+        				if ( m_othello.gameIsSet() || m_aiActive[m_player] ) {
         					return;
         				}
 
         				// When it is a Legal Move
         				if ( m_othello.moveIsLegal(x, y, m_player) ) {
-        					m_othello.makeMove(x, y, m_player);
-        					updateBoard();
-
-        					// Set the next player
-        					// If the next has no moves come back to this player
-        					togglePlayer();
-        					if ( !m_othello.canMove(m_player) ) {
-        						togglePlayer();
-        					}
-
-        					// Update the game board
-        					int black = m_othello.countPieces(OthelloBoard.BLACK);
-        					int white = m_othello.countPieces(OthelloBoard.WHITE);
-        					m_feedback.setText( "Score is Black (" + black + ") and White (" + white + ")" );
-
-            				// Game is over - show results
-            				if ( m_othello.gameIsSet() ) {
-            					m_feedback.setText( "Results are Black (" + black + ") and White (" + white + ")" );
-            				}
-
+        					makeMove(x, y);
         				}
 
         				// Illegal Move
@@ -161,6 +144,31 @@ public class BasicGui extends JPanel {
         add(feedback, BorderLayout.CENTER);
         add(options, BorderLayout.SOUTH);
 
+    }
+    
+    /**
+     * Make a move at x, y and update the GUI, switch player
+     */
+    private void makeMove(int x, int y) {
+    	m_othello.makeMove(x, y, m_player);
+		updateBoard();
+
+		// Set the next player
+		// If the next has no moves come back to this player
+		togglePlayer();
+		if ( !m_othello.canMove(m_player) ) {
+			togglePlayer();
+		}
+
+		// Update the game board
+		int black = m_othello.countPieces(OthelloBoard.BLACK);
+		int white = m_othello.countPieces(OthelloBoard.WHITE);
+		m_feedback.setText( "Score is Black (" + black + ") and White (" + white + ")" );
+
+		// Game is over - show results
+		if ( m_othello.gameIsSet() ) {
+			m_feedback.setText( "Results are Black (" + black + ") and White (" + white + ")" );
+		}
     }
 
 
@@ -191,6 +199,29 @@ public class BasicGui extends JPanel {
      */
     private void togglePlayer() {
     	m_player = m_player == OthelloBoard.WHITE ? OthelloBoard.BLACK : OthelloBoard.WHITE;
+    	
+    	if ( m_aiActive[m_player] ) {
+    		( new Thread() {
+	    			public void run() {
+	    				OthelloMTDf aiObject = new OthelloMTDf();
+	    				aiObject.setMaxSearchDepth(10);
+	    				aiObject.setRootNode(m_othello, m_player);
+	    				aiObject.iterativeMTDf();
+	    				int move = aiObject.retreiveBestMove();
+	    				if (move != -1) {
+	    					makeMove(OthelloMTDf.xyTox(move), OthelloMTDf.xyToy(move));
+	    				} else {
+	    					// Set the next player
+	    					// If the next has no moves come back to this player
+	    					togglePlayer();
+	    					if ( !m_othello.canMove(m_player) ) {
+	    						togglePlayer();
+	    					}
+	    				}
+	    			}
+    			}
+    		).start();
+    	}
     }
 
 

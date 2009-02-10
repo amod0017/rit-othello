@@ -10,7 +10,7 @@ package core;
 public class OthelloMTDf extends OthelloAlphaBeta {
 	int passes = 0;
 	
-	OthelloMTDf() {}
+	public OthelloMTDf() { super(); }
 	
 	/**
 	 * MTD(f) search with default guess
@@ -19,7 +19,7 @@ public class OthelloMTDf extends OthelloAlphaBeta {
 	 * @param turn : current player turn
 	 * @return
 	 */
-	int searchMTDf() {
+	public int searchMTDf() {
 		return searchMTDf(0);
 	}
 	
@@ -31,7 +31,7 @@ public class OthelloMTDf extends OthelloAlphaBeta {
 	 * @param turn : current player turn (WHITE or BLACK)
 	 * @return
 	 */
-	int searchMTDf(int guess) {
+	public int searchMTDf(int guess) {
 		int alpha = LOWESTSCORE;
 		int beta  = HIGHESTSCORE;
 		int nullWindow;
@@ -64,7 +64,7 @@ public class OthelloMTDf extends OthelloAlphaBeta {
 	 * @param turn : current player turn (WHITE or BLACK)
 	 * @return
 	 */
-	int iterativeMTDf() {
+	public int iterativeMTDf() {
 		int guess = 0;
 		
 		int finalMaxDepth = maxSearchDepth;
