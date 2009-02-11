@@ -78,7 +78,8 @@ public class BasicGui extends JPanel {
 
         // Constructor creates a new game automatically
         m_othello = new OthelloBitBoard();
-        m_player = m_othello.canMove( OthelloBoard.BLACK ) ? OthelloBoard.BLACK : OthelloBoard.WHITE;
+        m_player = OthelloBoard.WHITE;
+        togglePlayer(); // toggle to black
 
         // Images
         emptyImage = new ImageIcon("images/empty.gif", "empty");
