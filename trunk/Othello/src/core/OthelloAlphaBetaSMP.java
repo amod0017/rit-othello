@@ -8,6 +8,8 @@ import java.util.Queue;
 import java.util.Vector;
 import java.util.concurrent.ArrayBlockingQueue;
 
+import core.OthelloAlphaBeta.Window;
+
 import edu.rit.pj.ParallelRegion;
 import edu.rit.pj.ParallelTeam;
 
@@ -67,10 +69,9 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 		protected void cancelAllChildJobs() {
 			if (childJobs != null) {
 				for (JobRequest j : childJobs) {
-					AlphaBetaJobRequest childNode = (AlphaBetaJobRequest)j;
 					j.cancelled = true;
-					if (!(childNode.cancelled || childNode.complete)) {
-						childNode.cancelAllChildJobs();
+					if (!(j.cancelled || j.complete)) {
+						j.cancelAllChildJobs();
 					}
 				}
 			}
@@ -170,17 +171,22 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 		public synchronized void reportJobComplete(int score) {
 			bestScore = score;
 			cancelAllChildJobs();
+			
+			Window storedWindow = transpositionTable.get(item);
+			if (storedWindow == null) {
+				storedWindow = new Window();
+			}
 
 			if (score <= searchWindow.alpha) { // if fail low
-				searchWindow.beta = score; // we know that at BEST the score is this bad
+				storedWindow.beta = score; // we know that at BEST the score is this bad
 			} else if (score >= searchWindow.beta) {
-				searchWindow.alpha = score; // we know that the score is at LEAST this good
+				storedWindow.alpha = score; // we know that the score is at LEAST this good
 			} else {
-				searchWindow.alpha = searchWindow.beta = score; // store exact value
+				storedWindow.alpha = storedWindow.beta = score; // store exact value
 			}
 
 			if (transpositionTable.size() < maxTableEntries) {
-				transpositionTable.put(item, searchWindow); // store results for future lookup
+				transpositionTable.put(item, storedWindow); // store results for future lookup
 			}
 			
 			if (cancelled) {

@@ -211,7 +211,7 @@ public class BasicGui extends JPanel {
 	    				
 	    				if ( totalPieces > 50 ) {
 	    					aiObject.setMaxSearchDepth(14);
-	    				} else if ( totalPieces > 46 ) {
+	    				} else if ( totalPieces > 45 ) {
 	    					aiObject.setMaxSearchDepth(13);
 	    				} else if ( totalPieces < 14 ) {
 	    					aiObject.setMaxSearchDepth(11);
