@@ -63,6 +63,18 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 			}
 		}
 		public void updateChildWindow(Window window) {}
+		
+		protected void cancelAllChildJobs() {
+			if (childJobs != null) {
+				for (JobRequest j : childJobs) {
+					AlphaBetaJobRequest childNode = (AlphaBetaJobRequest)j;
+					j.cancelled = true;
+					if (!(childNode.cancelled || childNode.complete)) {
+						childNode.cancelAllChildJobs();
+					}
+				}
+			}
+		}
 	};
 
 	protected class AlphaBetaJobRequest extends JobRequest {
@@ -74,17 +86,11 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 		public AlphaBetaJobRequest(OthelloBitBoard position, int depth, int turn, Window window) {
 			item = new BoardAndDepth(position, depth, turn);
 			searchWindow = new Window(window);
-			bestScore = NOSCORE;
 			parentJob = null;
-			checkJobNecessity();
+			init();
 		}
 
 		protected AlphaBetaJobRequest(AlphaBetaJobRequest parent, OthelloBitBoard position) {
-			assert(parent.item.getDepth() >= 0 && parent.item.getDepth() < 20);
-			assert(parent.item.getTurn() == 0 || parent.item.getTurn() == 1);
-			
-			bestScore = NOSCORE;
-			
 			parentJob = parent;
 			item = new BoardAndDepth(position,
 					parent.item.getDepth() - 1,
@@ -92,7 +98,19 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 
 			searchWindow = new Window();
 			parent.updateChildWindow(searchWindow);
-
+			init();
+		}
+		
+		protected AlphaBetaJobRequest(JobRequest parent, BoardAndDepth item, Window window) {
+			parentJob = parent;
+			this.item = item;
+			searchWindow = window;
+			parent.updateChildWindow(searchWindow);
+			init();
+		}
+		
+		private void init() {
+			bestScore = NOSCORE;
 			checkJobNecessity();
 		}
 
@@ -145,18 +163,6 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 				if (bestScore >= searchWindow.beta || /*beta cutoff check*/
 						childJobs.isEmpty() /*moves exhausted check*/) {
 					reportJobComplete(bestScore);
-				}
-			}
-		}
-		
-		private void cancelAllChildJobs() {
-			if (childJobs != null) {
-				for (JobRequest j : childJobs) {
-					AlphaBetaJobRequest childNode = (AlphaBetaJobRequest)j;
-					j.cancelled = true;
-					if (!(childNode.cancelled || childNode.complete)) {
-						childNode.cancelAllChildJobs();
-					}
 				}
 			}
 		}
@@ -283,13 +289,9 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 			window.alpha = Math.max(-searchWindow.beta, window.alpha);
 			window.beta = Math.min(-Math.max(bestScore, searchWindow.alpha), window.beta);
 		}
-
-		public int getSharedSearchDepth() {
-			return sharedSearchDepth;
-		}
-
-		public void setSharedSearchDepth(int sharedDepth) {
-			sharedSearchDepth = sharedDepth;
+		
+		public int getBestScore() {
+			return bestScore;
 		}
 	}
 
@@ -304,6 +306,14 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 	public int getJobsSkipped() {
 		return jobsSkipped;
 	}
+	
+	public int getSharedSearchDepth() {
+		return sharedSearchDepth;
+	}
+
+	public void setSharedSearchDepth(int sharedDepth) {
+		sharedSearchDepth = sharedDepth;
+	}
 
 	public void resetCounters() {
 		super.resetCounters();
@@ -312,12 +322,31 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 	}
 
 	/**
-	 * Parallel execution of the job queue
+	 * Execution of the job queue
 	 */
 	public void executeJobQueue() {
 		while (!jobQueue.isEmpty()) {
 			jobQueue.poll().executeJob();
 			++totalJobsExecuted;
+		}
+	}
+	
+	/**
+	 * Parallel execution of the job queue
+	 */
+	public void parallelExecution(int threads) {
+		// Manually adjust the number of threads for ease.
+		try {
+			new ParallelTeam(threads).execute(new ParallelRegion() {
+				public void run() throws Exception {
+					System.out.println( getThreadIndex() + " started" );
+					executeJobQueue();
+					System.out.println( getThreadIndex() + " says its done");
+				}
+			});
+		} catch (Exception e) {
+			e.printStackTrace();
+			System.exit(1);
 		}
 	}
 
@@ -334,10 +363,6 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 	/**
 	 * @param args
 	 */
-
-	// All Threads have Access
-	static OthelloAlphaBetaSMP testObj;
-
 	public static void main(String[] args) {
 		long begin = System.currentTimeMillis();
 
@@ -345,7 +370,7 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 
 		OthelloBitBoard test1 = new OthelloBitBoard(0x0000002C14000000L, 0x0000381028040000L);
 
-		testObj = new OthelloAlphaBetaSMP();
+		OthelloAlphaBetaSMP testObj = new OthelloAlphaBetaSMP();
 		testObj.setMaxSearchDepth(10);
 		testObj.setLevelsToSort(4);
 		testObj.setRootNode(test1, WHITE);
@@ -357,20 +382,7 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 		testObj.jumpStart();
 		System.out.println("After Jump Start");
 
-		// Manually adjust the number of threads for ease.
-		int k = 2;
-		try {
-			new ParallelTeam(k).execute(new ParallelRegion() {
-				public void run() throws Exception {
-					System.out.println( getThreadIndex() + " started" );
-					testObj.executeJobQueue();
-					System.out.println( getThreadIndex() + " says its done");
-				}
-			});
-		} catch (Exception e) {
-			e.printStackTrace();
-			System.exit(1);
-		}
+		testObj.parallelExecution(2);
 
 		System.out.println("score: " + job.bestScore);
 

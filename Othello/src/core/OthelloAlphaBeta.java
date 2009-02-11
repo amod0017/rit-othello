@@ -42,8 +42,8 @@ public class OthelloAlphaBeta {
 	 * This class bundles alpha and beta so the range can be stored in a map
 	 */
 	public static class Window {
-		public int alpha;
-		public int beta;
+		public int alpha; // lowerbound
+		public int beta; // upperbound
 		
 		Window(Window o) {
 			this.alpha = o.alpha;
@@ -664,7 +664,7 @@ public class OthelloAlphaBeta {
 		//OthelloBitBoard test1 = new OthelloBitBoard(0xFFBFCD5D4D0F07D9L, 0x004002829210C824L);
 		
 		OthelloAlphaBeta testObj = new OthelloAlphaBeta();
-		testObj.setMaxSearchDepth(9);
+		testObj.setMaxSearchDepth(10);
 		testObj.setLevelsToSort(3);
 		testObj.setRootNode(test1, WHITE);
 
