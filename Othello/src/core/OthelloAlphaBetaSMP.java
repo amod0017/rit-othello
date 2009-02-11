@@ -14,10 +14,13 @@ import java.util.concurrent.ArrayBlockingQueue;
  */
 public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 	Queue<JobRequest> jobQueue;
-	int nodesInJobQueue = 0;
+	
 	int sharedSearchDepth = 2;
-
 	int localTableSize;
+
+	int totalJobsExecuted;
+	int leafJobsExecuted;
+	int jobsSkipped;
 	
 	OthelloAlphaBetaSMP(int localTableSize) {
 		this.localTableSize = localTableSize;
@@ -232,6 +235,12 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 					//bulk of slowness that is meant to run in parallel
 					int score = localSearch.alphaBetaSearch(searchWindow.alpha, searchWindow.beta);
 					
+					//stats tracking (maybe switch off for parallel performance)
+					leafCount += localSearch.getLeafCount();
+					nodesSearched += localSearch.getNodesSearched();
+					
+					++leafJobsExecuted;
+					
 					reportJobComplete(score);
 				} else {
 					spawnChildJobs();
@@ -248,12 +257,31 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 		}
 	}
 	
+	public int getTotalJobsExecuted() {
+		return totalJobsExecuted;
+	}
+
+	public int getLeafJobsExecuted() {
+		return leafJobsExecuted;
+	}
+
+	public int getJobsSkipped() {
+		return jobsSkipped;
+	}
+	
+	public void resetCounters() {
+		super.resetCounters();
+		leafJobsExecuted = 0;
+		totalJobsExecuted = 0;
+	}
+	
 	/**
 	 * Parallel execution of the job queue
 	 */
 	public void executeJobQueue() {
 		while (!jobQueue.isEmpty()) {
 			jobQueue.poll().executeJob();
+			++totalJobsExecuted;
 		}
 	}
 	
@@ -276,6 +304,15 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 		testObj.executeJobQueue();
 
 		System.out.println("score: " + job.bestScore);
+		
+		System.out.println("leaf nodes: " + testObj.getLeafCount());
+		System.out.println("non-leaf nodes: " + testObj.getNodesSearched());
+		System.out.println("nodes retreived: " + testObj.getNodesRetreived());
+		System.out.println("table size: " + testObj.transpositionTable.size());
+		
+		System.out.println("totalJobsExecuted: " + testObj.getTotalJobsExecuted());
+		System.out.println("leafJobsExecuted: " + testObj.getLeafJobsExecuted());
+		System.out.println("jobsSkipped: " + testObj.getJobsSkipped());
 		
 		System.out.println("time: " + (System.currentTimeMillis() - begin));
 	}
