@@ -79,6 +79,11 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 		}
 
 		protected AlphaBetaJobRequest(AlphaBetaJobRequest parent, OthelloBitBoard position) {
+			assert(parent.item.getDepth() >= 0 && parent.item.getDepth() < 20);
+			assert(parent.item.getTurn() == 0 || parent.item.getTurn() == 1);
+			
+			bestScore = NOSCORE;
+			
 			parentJob = parent;
 			item = new BoardAndDepth(position,
 					parent.item.getDepth() - 1,
@@ -130,15 +135,17 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 			if (child instanceof AlphaBetaJobRequest) {
 				AlphaBetaJobRequest childNode = (AlphaBetaJobRequest)child;
 
+				bestScore = Math.max(bestScore, -childNode.bestScore);
+				
 				childJobs.remove(child);
-				if (/*searchWindow.beta <= -childNode.bestScore || /*beta cutoff check*/
+				if (searchWindow.beta <= -childNode.bestScore || /*beta cutoff check*/
 						childJobs.isEmpty() /*moves exhausted check*/) {
 
 					for (JobRequest j : childJobs) {
 						j.cancelled = true;
 					}
 
-					reportJobComplete(-childNode.bestScore);
+					reportJobComplete(bestScore);
 				}
 			}
 		}
@@ -196,7 +203,9 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 
 				//search the table for the most well-searched window relating to this new position
 				Window tWindow = null;
-				for (int i = maxSearchDepth; i >= sharedSearchDepth && tWindow == null; --i) {
+				for (int i = maxSearchDepth; 
+					i >= (maxSearchDepth - item.getDepth()) && tWindow == null; 
+					--i) {
 					tWindow = transpositionTable.get(new BoardAndDepth(newPosition, i, turn ^ 1));
 				}
 
