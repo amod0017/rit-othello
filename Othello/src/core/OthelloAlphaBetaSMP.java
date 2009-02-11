@@ -56,7 +56,6 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 			started = true;
 			if (!cancelled && !complete) {
 				onExecute();
-				complete = true;
 			}
 		}
 	};
@@ -143,8 +142,8 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 		public void reportJobComplete(int score) {
 			bestScore = score;
 			
-			if (complete) {
-				System.out.println("Warning: Was already complete...");
+			if (cancelled || complete) {
+				System.out.println("Completed but... cancelled: " + cancelled + "  complete: " + complete);
 			}
 			
 			if (score <= searchWindow.alpha) { // if fail low
@@ -169,6 +168,10 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 		}
 
 		public void spawnChildJobs() {
+			if (cancelled || complete) {
+				System.out.println("cancelled: " + cancelled + "  complete: " + complete);
+			}
+			
 			int turn = item.getTurn();
 			childJobs = new Vector<JobRequest>(16);
 			
@@ -242,6 +245,7 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 					++leafJobsExecuted;
 					
 					reportJobComplete(score);
+					complete = true;
 				} else {
 					spawnChildJobs();
 				}
