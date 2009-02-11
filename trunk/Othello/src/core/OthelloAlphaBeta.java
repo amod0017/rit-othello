@@ -82,11 +82,11 @@ public class OthelloAlphaBeta {
 				((BoardAndDepth)other).hashMod == hashMod;
 		}
 		
-		public int getDepth() {
+		public int getTurn() {
 			return hashMod & 1;
 		}
 		
-		public int getTurn() {
+		public int getDepth() {
 			return hashMod >>> 1;
 		}
 	};
@@ -660,8 +660,8 @@ public class OthelloAlphaBeta {
 		long begin = System.currentTimeMillis();
 
 		System.out.println("Alpha-Beta search");
-		//OthelloBitBoard test1 = new OthelloBitBoard(0x0000002C14000000L, 0x0000381028040000L);
-		OthelloBitBoard test1 = new OthelloBitBoard(0xFFBFCD5D4D0F07D9L, 0x004002829210C824L);
+		OthelloBitBoard test1 = new OthelloBitBoard(0x0000002C14000000L, 0x0000381028040000L);
+		//OthelloBitBoard test1 = new OthelloBitBoard(0xFFBFCD5D4D0F07D9L, 0x004002829210C824L);
 		
 		OthelloAlphaBeta testObj = new OthelloAlphaBeta();
 		testObj.setMaxSearchDepth(12);
