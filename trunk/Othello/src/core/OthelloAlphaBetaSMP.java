@@ -6,6 +6,7 @@ package core;
 import java.util.Collections;
 import java.util.Queue;
 import java.util.Vector;
+import java.util.concurrent.ArrayBlockingQueue;
 
 /**
  * 
@@ -20,13 +21,15 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 	
 	OthelloAlphaBetaSMP(int localTableSize) {
 		this.localTableSize = localTableSize;
+		jobQueue = new ArrayBlockingQueue<JobRequest>(400, true);
 	}
 	
 	OthelloAlphaBetaSMP() {
 		localTableSize = 250000;
+		jobQueue = new ArrayBlockingQueue<JobRequest>(400, true);
 	}
 	
-	protected AlphaBetaJobRequest queueAlphaBetaSMP(int alpha, int beta) {
+	protected AlphaBetaJobRequest enqueueAlphaBetaSMP(int alpha, int beta) {
 		AlphaBetaJobRequest job = new AlphaBetaJobRequest(rootNode, 
 				maxSearchDepth, 
 				rootNodeTurn, 
@@ -36,6 +39,12 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 	}
 	
 	protected class JobRequest {
+		JobRequest parentJob;
+		Vector<JobRequest> childJobs;
+		
+		boolean started = false;
+		boolean complete = false;
+		
 		public void spawnChildJobs() {}
 		public void childCompletionUpdate(JobRequest child) {}
 		public void executeJob() {}
@@ -44,12 +53,9 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 	protected class AlphaBetaJobRequest extends JobRequest {
 		BoardAndDepth item;
 		Window searchWindow;
-		AlphaBetaJobRequest parentJob;
-		Vector<JobRequest> childJobs;
-		int bestScore;
-		boolean started;
-		boolean complete;
 		
+		int bestScore;
+
 		public AlphaBetaJobRequest(OthelloBitBoard position, int depth, int turn, Window window) {
 			item = new BoardAndDepth(position, depth, turn);
 			searchWindow = new Window(window);
@@ -101,10 +107,12 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 		
 		public void childCompletionUpdate(JobRequest child) {
 			if (child instanceof AlphaBetaJobRequest) {
-				parentJob.childJobs.remove(this);
-				if (parentJob.searchWindow.beta <= -bestScore || /*beta cutoff check*/
-						parentJob.childJobs.isEmpty() /*moves exhausted check*/) {
-					parentJob.reportJobComplete(-bestScore);
+				AlphaBetaJobRequest childNode = (AlphaBetaJobRequest)child;
+				
+				childJobs.remove(child);
+				if (searchWindow.beta <= -childNode.bestScore || /*beta cutoff check*/
+						childJobs.isEmpty() /*moves exhausted check*/) {
+					reportJobComplete(-childNode.bestScore);
 				}
 			}
 		}
@@ -125,7 +133,7 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 			}
 			
 			if (parentJob == null) { //root job is finishing
-				parentJob.childCompletionUpdate(this);
+				
 			} else {
 				parentJob.childCompletionUpdate(this);
 			}
@@ -190,7 +198,7 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 			
 			OthelloAlphaBeta localSearch = new OthelloAlphaBeta(localTableSize);
 			localSearch.setMaxSearchDepth(maxSearchDepth - sharedSearchDepth);
-			localSearch.setLevelsToSort(1);
+			localSearch.setLevelsToSort(levelsToSort - sharedSearchDepth);
 			localSearch.setValueOfDraw(valueOfDraw);
 			localSearch.setRootNode(item, WHITE);
 			localSearch.setMinDepthToStore(3);
@@ -211,10 +219,34 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 	}
 	
 	/**
+	 * Parallel execution of the job queue
+	 */
+	public void executeJobQueue() {
+		while (!jobQueue.isEmpty()) {
+			jobQueue.poll().executeJob();
+		}
+	}
+	
+	/**
 	 * @param args
 	 */
 	public static void main(String[] args) {
-		// TODO Auto-generated method stub
+		long begin = System.currentTimeMillis();
 
+		System.out.println("Alpha-Beta search");
+	
+		OthelloBitBoard test1 = new OthelloBitBoard(0x0000002C14000000L, 0x0000381028040000L);
+		
+		OthelloAlphaBetaSMP testObj = new OthelloAlphaBetaSMP();
+		testObj.setMaxSearchDepth(12);
+		testObj.setLevelsToSort(3);
+		testObj.setRootNode(test1, WHITE);
+		
+		AlphaBetaJobRequest job = testObj.enqueueAlphaBetaSMP(LOWESTSCORE, HIGHESTSCORE);
+		testObj.executeJobQueue();
+
+		System.out.println("score: " + job.bestScore);
+		
+		System.out.println("time: " + (System.currentTimeMillis() - begin));
 	}
 }
