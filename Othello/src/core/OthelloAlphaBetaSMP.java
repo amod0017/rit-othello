@@ -86,7 +86,7 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 			checkJobNecessity();
 		}
 		
-		public void checkJobNecessity() {
+		public boolean checkJobNecessity() {
 			Window storedWindow = transpositionTable.get(item);
 
 			++nodesSearched;
@@ -111,6 +111,8 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 			if (searchWindow.alpha == searchWindow.beta) {
 				reportJobComplete(searchWindow.alpha); // result is already known
 			}
+			
+			return !complete;
 		}
 		
 		public void childCompletionUpdate(JobRequest child) {
@@ -218,22 +220,22 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 		}
 		
 		public void onExecute() {
-			checkJobNecessity();
-			
-			if (item.getDepth() > sharedSearchDepth) {
-				OthelloAlphaBeta localSearch = new OthelloAlphaBeta(localTableSize);
-				localSearch.setMaxSearchDepth(maxSearchDepth - sharedSearchDepth);
-				localSearch.setLevelsToSort(levelsToSort - sharedSearchDepth);
-				localSearch.setValueOfDraw(valueOfDraw);
-				localSearch.setRootNode(item, WHITE);
-				localSearch.setMinDepthToStore(3);
-				
-				//bulk of slowness that is meant to run in parallel
-				int score = localSearch.alphaBetaSearch(searchWindow.alpha, searchWindow.beta);
-				
-				reportJobComplete(score);
-			} else {
-				spawnChildJobs();
+			if (checkJobNecessity()) {
+				if (item.getDepth() > sharedSearchDepth) {
+					OthelloAlphaBeta localSearch = new OthelloAlphaBeta(localTableSize);
+					localSearch.setMaxSearchDepth(maxSearchDepth - sharedSearchDepth);
+					localSearch.setLevelsToSort(levelsToSort - sharedSearchDepth);
+					localSearch.setValueOfDraw(valueOfDraw);
+					localSearch.setRootNode(item, WHITE);
+					localSearch.setMinDepthToStore(3);
+					
+					//bulk of slowness that is meant to run in parallel
+					int score = localSearch.alphaBetaSearch(searchWindow.alpha, searchWindow.beta);
+					
+					reportJobComplete(score);
+				} else {
+					spawnChildJobs();
+				}
 			}
 		}
 		
