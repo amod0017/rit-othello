@@ -224,7 +224,7 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 		
 		public void onExecute() {
 			if (checkJobNecessity()) {
-				if (item.getDepth() > sharedSearchDepth) {
+				if ((maxSearchDepth - item.getDepth()) >= sharedSearchDepth) {
 					OthelloAlphaBeta localSearch = new OthelloAlphaBeta(localTableSize);
 					localSearch.setMaxSearchDepth(maxSearchDepth - sharedSearchDepth);
 					localSearch.setLevelsToSort(levelsToSort - sharedSearchDepth);
@@ -296,7 +296,7 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 		OthelloBitBoard test1 = new OthelloBitBoard(0x0000002C14000000L, 0x0000381028040000L);
 		
 		OthelloAlphaBetaSMP testObj = new OthelloAlphaBetaSMP();
-		testObj.setMaxSearchDepth(12);
+		testObj.setMaxSearchDepth(8);
 		testObj.setLevelsToSort(3);
 		testObj.setRootNode(test1, WHITE);
 		
