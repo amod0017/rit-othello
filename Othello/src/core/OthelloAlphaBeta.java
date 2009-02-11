@@ -148,7 +148,11 @@ public class OthelloAlphaBeta {
 	 */
 	protected int alphaBetaSearch(int alpha, int beta) {
 		if (levelsToSort <= 0) {
-			return alphaBetaNoSort(rootNode, alpha, beta, rootNodeTurn, maxSearchDepth);
+			if (maxSearchDepth <= minDepthToStore) {
+				return alphaBetaNoTable(rootNode, alpha, beta, rootNodeTurn, maxSearchDepth);
+			} else {
+				return alphaBetaNoSort(rootNode, alpha, beta, rootNodeTurn, maxSearchDepth);
+			}
 		} else {
 			return alphaBetaSorted(rootNode, alpha, beta, rootNodeTurn, maxSearchDepth);
 		}
