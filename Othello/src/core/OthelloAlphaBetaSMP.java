@@ -56,6 +56,7 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 			started = true;
 			if (!cancelled && !complete) {
 				onExecute();
+				complete = childJobs != null && childJobs.isEmpty();
 			}
 		}
 	};
@@ -127,7 +128,7 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 				AlphaBetaJobRequest childNode = (AlphaBetaJobRequest)child;
 				
 				childJobs.remove(child);
-				if (searchWindow.beta <= -childNode.bestScore || /*beta cutoff check*/
+				if (/*searchWindow.beta <= -childNode.bestScore || /*beta cutoff check*/
 						childJobs.isEmpty() /*moves exhausted check*/) {
 					
 					for (JobRequest j : childJobs) {
@@ -245,7 +246,6 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 					++leafJobsExecuted;
 					
 					reportJobComplete(score);
-					complete = true;
 				} else {
 					spawnChildJobs();
 				}
