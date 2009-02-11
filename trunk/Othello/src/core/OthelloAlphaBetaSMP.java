@@ -21,12 +21,12 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 	
 	OthelloAlphaBetaSMP(int localTableSize) {
 		this.localTableSize = localTableSize;
-		jobQueue = new ArrayBlockingQueue<JobRequest>(400, true);
+		jobQueue = new ArrayBlockingQueue<JobRequest>(4000, true);
 	}
 	
 	OthelloAlphaBetaSMP() {
 		localTableSize = 250000;
-		jobQueue = new ArrayBlockingQueue<JobRequest>(400, true);
+		jobQueue = new ArrayBlockingQueue<JobRequest>(4000, true);
 	}
 	
 	protected AlphaBetaJobRequest enqueueAlphaBetaSMP(int alpha, int beta) {
@@ -196,17 +196,21 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 		public void executeJob() {
 			checkJobNecessity();
 			
-			OthelloAlphaBeta localSearch = new OthelloAlphaBeta(localTableSize);
-			localSearch.setMaxSearchDepth(maxSearchDepth - sharedSearchDepth);
-			localSearch.setLevelsToSort(levelsToSort - sharedSearchDepth);
-			localSearch.setValueOfDraw(valueOfDraw);
-			localSearch.setRootNode(item, WHITE);
-			localSearch.setMinDepthToStore(3);
-			
-			//bulk of slowness that is meant to run in parallel
-			int score = localSearch.alphaBetaSearch(searchWindow.alpha, searchWindow.beta);
-			
-			reportJobComplete(score);
+			if (item.getDepth() > sharedSearchDepth) {
+				OthelloAlphaBeta localSearch = new OthelloAlphaBeta(localTableSize);
+				localSearch.setMaxSearchDepth(maxSearchDepth - sharedSearchDepth);
+				localSearch.setLevelsToSort(levelsToSort - sharedSearchDepth);
+				localSearch.setValueOfDraw(valueOfDraw);
+				localSearch.setRootNode(item, WHITE);
+				localSearch.setMinDepthToStore(3);
+				
+				//bulk of slowness that is meant to run in parallel
+				int score = localSearch.alphaBetaSearch(searchWindow.alpha, searchWindow.beta);
+				
+				reportJobComplete(score);
+			} else {
+				spawnChildJobs();
+			}
 		}
 		
 		public int getSharedSearchDepth() {
