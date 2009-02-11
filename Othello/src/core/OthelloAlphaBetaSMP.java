@@ -13,23 +13,44 @@ import java.util.Vector;
  */
 public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 	Queue<JobRequest> jobQueue;
-	int nodesInJobQueue;
-	int sharedDepth;
+	int nodesInJobQueue = 0;
+	int sharedSearchDepth = 2;
+
+	int localTableSize;
+	
+	OthelloAlphaBetaSMP(int localTableSize) {
+		this.localTableSize = localTableSize;
+	}
 	
 	OthelloAlphaBetaSMP() {
-		
+		localTableSize = 250000;
 	}
-
+	
+	protected AlphaBetaJobRequest queueAlphaBetaSMP(int alpha, int beta) {
+		AlphaBetaJobRequest job = new AlphaBetaJobRequest(rootNode, 
+				maxSearchDepth, 
+				rootNodeTurn, 
+				new Window(alpha, beta));
+		jobQueue.add(job);
+		return job;
+	}
+	
 	protected class JobRequest {
+		public void spawnChildJobs() {}
+		public void childCompletionUpdate(JobRequest child) {}
+		public void executeJob() {}
+	};
+
+	protected class AlphaBetaJobRequest extends JobRequest {
 		BoardAndDepth item;
 		Window searchWindow;
-		JobRequest parentJob;
+		AlphaBetaJobRequest parentJob;
 		Vector<JobRequest> childJobs;
 		int bestScore;
 		boolean started;
 		boolean complete;
 		
-		public JobRequest(OthelloBitBoard position, int depth, int turn, Window window) {
+		public AlphaBetaJobRequest(OthelloBitBoard position, int depth, int turn, Window window) {
 			item = new BoardAndDepth(position, depth, turn);
 			searchWindow = new Window(window);
 			bestScore = NOSCORE;
@@ -37,7 +58,7 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 			checkJobNecessity();
 		}
 		
-		protected JobRequest(JobRequest parent, OthelloBitBoard position) {
+		protected AlphaBetaJobRequest(AlphaBetaJobRequest parent, OthelloBitBoard position) {
 			parentJob = parent;
 			item = new BoardAndDepth(position, 
 					parent.item.getDepth() - 1,
@@ -78,6 +99,16 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 			}
 		}
 		
+		public void childCompletionUpdate(JobRequest child) {
+			if (child instanceof AlphaBetaJobRequest) {
+				parentJob.childJobs.remove(this);
+				if (parentJob.searchWindow.beta <= -bestScore || /*beta cutoff check*/
+						parentJob.childJobs.isEmpty() /*moves exhausted check*/) {
+					parentJob.reportJobComplete(-bestScore);
+				}
+			}
+		}
+		
 		public void reportJobComplete(int score) {
 			bestScore = score;
 			
@@ -94,16 +125,12 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 			}
 			
 			if (parentJob == null) { //root job is finishing
-				
+				parentJob.childCompletionUpdate(this);
 			} else {
-				parentJob.childJobs.remove(this);
-				if (parentJob.searchWindow.beta <= -bestScore || /*beta cutoff check*/
-						parentJob.childJobs.isEmpty() /*moves exhausted check*/) {
-					parentJob.reportJobComplete(-bestScore);
-				}
+				parentJob.childCompletionUpdate(this);
 			}
 		}
-		
+
 		public void spawnChildJobs() {
 			int turn = item.getTurn();
 			childJobs = new Vector<JobRequest>(16);
@@ -125,7 +152,7 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 				
 				//search the table for the most well-searched window relating to this new position
 				Window tWindow = null;
-				for (int i = maxSearchDepth; i >= sharedDepth && tWindow == null; --i) {
+				for (int i = maxSearchDepth; i >= sharedSearchDepth && tWindow == null; --i) {
 					tWindow = transpositionTable.get(new BoardAndDepth(newPosition, i, turn ^ 1));
 				}
 				
@@ -139,7 +166,7 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 			if (moveList.isEmpty()) { // if NO move was found...
 				if (item.canMove(turn ^ 1)) {
 					// player loses turn
-					JobRequest s = new JobRequest(this, item);
+					JobRequest s = new AlphaBetaJobRequest(this, item);
 					childJobs.add(s);
 					jobQueue.add(s);
 				} else {
@@ -151,11 +178,35 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 				
 				for (BoardAndWindow p : moveList) {
 					//request all child jobs in sorted order
-					JobRequest s = new JobRequest(this, p.board);
+					JobRequest s = new AlphaBetaJobRequest(this, p.board);
 					childJobs.add(s);
 					jobQueue.add(s);
 				}
 			}
+		}
+		
+		public void executeJob() {
+			checkJobNecessity();
+			
+			OthelloAlphaBeta localSearch = new OthelloAlphaBeta(localTableSize);
+			localSearch.setMaxSearchDepth(maxSearchDepth - sharedSearchDepth);
+			localSearch.setLevelsToSort(1);
+			localSearch.setValueOfDraw(valueOfDraw);
+			localSearch.setRootNode(item, WHITE);
+			localSearch.setMinDepthToStore(3);
+			
+			//bulk of slowness that is meant to run in parallel
+			int score = localSearch.alphaBetaSearch(searchWindow.alpha, searchWindow.beta);
+			
+			reportJobComplete(score);
+		}
+		
+		public int getSharedSearchDepth() {
+			return sharedSearchDepth;
+		}
+
+		public void setSharedSearchDepth(int sharedDepth) {
+			sharedSearchDepth = sharedDepth;
 		}
 	}
 	
