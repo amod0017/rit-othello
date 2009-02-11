@@ -44,10 +44,18 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 		
 		boolean started = false;
 		boolean complete = false;
+		boolean cancelled = false;
 		
 		public void spawnChildJobs() {}
 		public void childCompletionUpdate(JobRequest child) {}
-		public void executeJob() {}
+		public void onExecute() {}
+		public void executeJob() {
+			started = true;
+			if (!cancelled && !complete) {
+				onExecute();
+				complete = true;
+			}
+		}
 	};
 
 	protected class AlphaBetaJobRequest extends JobRequest {
@@ -106,12 +114,22 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 		}
 		
 		public void childCompletionUpdate(JobRequest child) {
+			if (complete) {
+				System.out.println("Warning: Parent was was already complete...");
+				return;
+			}
+			
 			if (child instanceof AlphaBetaJobRequest) {
 				AlphaBetaJobRequest childNode = (AlphaBetaJobRequest)child;
 				
 				childJobs.remove(child);
 				if (searchWindow.beta <= -childNode.bestScore || /*beta cutoff check*/
 						childJobs.isEmpty() /*moves exhausted check*/) {
+					
+					for (JobRequest j : childJobs) {
+						j.cancelled = true;
+					}
+					
 					reportJobComplete(-childNode.bestScore);
 				}
 			}
@@ -119,6 +137,10 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 		
 		public void reportJobComplete(int score) {
 			bestScore = score;
+			
+			if (complete) {
+				System.out.println("Warning: Was already complete...");
+			}
 			
 			if (score <= searchWindow.alpha) { // if fail low
 				searchWindow.beta = score; // we know that at BEST the score is this bad
@@ -137,6 +159,8 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 			} else {
 				parentJob.childCompletionUpdate(this);
 			}
+			
+			complete = true;
 		}
 
 		public void spawnChildJobs() {
@@ -193,7 +217,7 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 			}
 		}
 		
-		public void executeJob() {
+		public void onExecute() {
 			checkJobNecessity();
 			
 			if (item.getDepth() > sharedSearchDepth) {
