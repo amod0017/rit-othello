@@ -18,7 +18,7 @@ import edu.rit.pj.ParallelTeam;
 public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 	Queue<JobRequest> jobQueue;
 
-	int sharedSearchDepth = 2;
+	int sharedSearchDepth = 1;
 	int localTableSize;
 
 	int totalJobsExecuted;
@@ -62,6 +62,7 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 				complete = childJobs != null && childJobs.isEmpty();
 			}
 		}
+		public void updateChildWindow(Window window) {}
 	};
 
 	protected class AlphaBetaJobRequest extends JobRequest {
@@ -89,16 +90,18 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 					parent.item.getDepth() - 1,
 					parent.item.getTurn() ^ 1);
 
-			searchWindow = new Window(
-					-parent.searchWindow.beta,
-					-parent.searchWindow.alpha
-					);
+			searchWindow = new Window();
+			parent.updateChildWindow(searchWindow);
 
 			checkJobNecessity();
 		}
 
 		public boolean checkJobNecessity() {
 			Window storedWindow = transpositionTable.get(item);
+			
+			if (parentJob != null) {
+				parentJob.updateChildWindow(searchWindow);
+			}
 
 			++nodesSearched;
 
@@ -135,27 +138,32 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 			if (child instanceof AlphaBetaJobRequest) {
 				AlphaBetaJobRequest childNode = (AlphaBetaJobRequest)child;
 
+				//negamax scoring
 				bestScore = Math.max(bestScore, -childNode.bestScore);
 				
 				childJobs.remove(child);
-				if (searchWindow.beta <= -childNode.bestScore || /*beta cutoff check*/
+				if (bestScore >= searchWindow.beta || /*beta cutoff check*/
 						childJobs.isEmpty() /*moves exhausted check*/) {
-
-					for (JobRequest j : childJobs) {
-						j.cancelled = true;
-					}
-
 					reportJobComplete(bestScore);
 				}
 			}
 		}
-
-		public void reportJobComplete(int score) {
-			bestScore = score;
-
-			if (cancelled || complete) {
-				System.out.println("Completed but... cancelled: " + cancelled + "  complete: " + complete);
+		
+		private void cancelAllChildJobs() {
+			if (childJobs != null) {
+				for (JobRequest j : childJobs) {
+					AlphaBetaJobRequest childNode = (AlphaBetaJobRequest)j;
+					j.cancelled = true;
+					if (!(childNode.cancelled || childNode.complete)) {
+						childNode.cancelAllChildJobs();
+					}
+				}
 			}
+		}
+
+		public synchronized void reportJobComplete(int score) {
+			bestScore = score;
+			cancelAllChildJobs();
 
 			if (score <= searchWindow.alpha) { // if fail low
 				searchWindow.beta = score; // we know that at BEST the score is this bad
@@ -168,19 +176,24 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 			if (transpositionTable.size() < maxTableEntries) {
 				transpositionTable.put(item, searchWindow); // store results for future lookup
 			}
-
-			if (parentJob == null) { //root job is finishing
-
+			
+			if (cancelled) {
+				System.out.println("Job completed after cancellation. Wasted time.");
 			} else {
-				parentJob.childCompletionUpdate(this);
+				if (parentJob == null) { //root job is finishing
+	
+				} else {
+					parentJob.childCompletionUpdate(this);
+				}
 			}
 
 			complete = true;
 		}
 
 		public void spawnChildJobs() {
-			if (cancelled || complete) {
+			if (cancelled || complete || childJobs != null) {
 				System.out.println("cancelled: " + cancelled + "  complete: " + complete);
+				return;
 			}
 
 			int turn = item.getTurn();
@@ -219,9 +232,7 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 			if (moveList.isEmpty()) { // if NO move was found...
 				if (item.canMove(turn ^ 1)) {
 					// player loses turn
-					JobRequest s = new AlphaBetaJobRequest(this, item);
-					childJobs.add(s);
-					jobQueue.add(s);
+					enqueueChildJob(item);
 				} else {
 					//end of game
 					reportJobComplete(evaluateEnd(item, turn));
@@ -231,11 +242,15 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 
 				for (BoardAndWindow p : moveList) {
 					//request all child jobs in sorted order
-					JobRequest s = new AlphaBetaJobRequest(this, p.board);
-					childJobs.add(s);
-					jobQueue.add(s);
+					enqueueChildJob(p.board);
 				}
 			}
+		}
+		
+		private void enqueueChildJob(OthelloBitBoard newPosition) {
+			JobRequest s = new AlphaBetaJobRequest(this, newPosition);
+			childJobs.add(s);
+			jobQueue.add(s);
 		}
 
 		public void onExecute() {
@@ -245,7 +260,7 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 					localSearch.setMaxSearchDepth(maxSearchDepth - sharedSearchDepth);
 					localSearch.setLevelsToSort(levelsToSort - sharedSearchDepth);
 					localSearch.setValueOfDraw(valueOfDraw);
-					localSearch.setRootNode(item, WHITE);
+					localSearch.setRootNode(item, item.getTurn());
 					localSearch.setMinDepthToStore(3);
 
 					//bulk of slowness that is meant to run in parallel
@@ -262,6 +277,11 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 					spawnChildJobs();
 				}
 			}
+		}
+		
+		public void updateChildWindow(Window window) {
+			window.alpha = Math.max(-searchWindow.beta, window.alpha);
+			window.beta = Math.min(-Math.max(bestScore, searchWindow.alpha), window.beta);
 		}
 
 		public int getSharedSearchDepth() {
@@ -326,8 +346,8 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 		OthelloBitBoard test1 = new OthelloBitBoard(0x0000002C14000000L, 0x0000381028040000L);
 
 		testObj = new OthelloAlphaBetaSMP();
-		testObj.setMaxSearchDepth(9);
-		testObj.setLevelsToSort(3);
+		testObj.setMaxSearchDepth(10);
+		testObj.setLevelsToSort(4);
 		testObj.setRootNode(test1, WHITE);
 
 		AlphaBetaJobRequest job = testObj.enqueueAlphaBetaSMP(LOWESTSCORE, HIGHESTSCORE);
@@ -338,7 +358,7 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 		System.out.println("After Jump Start");
 
 		// Manually adjust the number of threads for ease.
-		int k = 1;
+		int k = 2;
 		try {
 			new ParallelTeam(k).execute(new ParallelRegion() {
 				public void run() throws Exception {
