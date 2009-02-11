@@ -42,9 +42,13 @@ public class OthelloAlphaBeta {
 	 * This class bundles alpha and beta so the range can be stored in a map
 	 */
 	public static class Window {
-		int alpha;
-		int beta;
+		public int alpha;
+		public int beta;
 		
+		Window(Window o) {
+			this.alpha = o.alpha;
+			this.beta = o.beta;
+		}
 		Window() {
 			this.alpha = LOWESTSCORE;
 			this.beta = HIGHESTSCORE;
@@ -59,7 +63,7 @@ public class OthelloAlphaBeta {
 	 * This class is needed because the depth of the board when analyzed must
 	 * be included and factored into the hashcode.
 	 */
-	private static class BoardAndDepth extends OthelloBitBoard {
+	protected static class BoardAndDepth extends OthelloBitBoard {
 		int hashMod;
 		
 		public BoardAndDepth(OthelloBitBoard board, int depth, int turn) {
@@ -90,7 +94,7 @@ public class OthelloAlphaBeta {
 	/*
 	 * This class is intended to sort optimal ordering
 	 */
-	private static class BoardAndWindow implements Comparable<BoardAndWindow>{
+	protected static class BoardAndWindow implements Comparable<BoardAndWindow>{
 		public OthelloBitBoard board;
 		public Window window;
 		
@@ -491,7 +495,7 @@ public class OthelloAlphaBeta {
 	 * @param state
 	 * @return score for an ended game
 	 */	
-	private int evaluateEnd(OthelloBitBoard position, int state) {
+	protected int evaluateEnd(OthelloBitBoard position, int state) {
 		int pieceDiff = position.countPieces(state) - position.countPieces(state ^ 1);
 		
 		if (pieceDiff < 0) {
