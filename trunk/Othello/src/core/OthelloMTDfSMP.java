@@ -150,7 +150,7 @@ public class OthelloMTDfSMP extends OthelloAlphaBetaSMP {
 				MTDfJobRequest childNode = (MTDfJobRequest)child;
 				
 				guess = childNode.guess;
-				
+				 
 				//final depth complete indicates completion
 				if (childNode.item.getDepth() >= item.getDepth()) {
 					reportJobComplete();
@@ -230,14 +230,15 @@ public class OthelloMTDfSMP extends OthelloAlphaBetaSMP {
 		System.out.println("Parallel MTD(f) search");
 
 		OthelloBitBoard test1 = new OthelloBitBoard(0x0000002C14000000L, 0x0000381028040000L);
-
+ 
 		OthelloMTDfSMP testObj = new OthelloMTDfSMP();
 		testObj.setMaxSearchDepth(10);
 		testObj.setLevelsToSort(4);
 		testObj.setRootNode(test1, WHITE);
-		testObj.setSharedSearchDepth(1);
-		
-		IterativeMTDfJobRequest job = testObj.enqueueIterativeMTDfSMP(0);
+		testObj.setSharedSearchDepth(0);
+
+		MTDfJobRequest job = testObj.enqueueMTDfSMP(0);
+		//IterativeMTDfJobRequest job = testObj.enqueueIterativeMTDfSMP(0);
 
 		// Jump Start
 		System.out.println("Before Jump Start");

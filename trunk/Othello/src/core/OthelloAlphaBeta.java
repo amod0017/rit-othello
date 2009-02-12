@@ -127,6 +127,13 @@ public class OthelloAlphaBeta {
 	OthelloAlphaBeta() {
 		transpositionTable = new HashMap<BoardAndDepth, Window>(maxTableEntries / 2, 0.5f);
 	}
+	
+	/**
+	 * construct with default table size
+	 */
+	protected OthelloAlphaBeta(Map<BoardAndDepth, Window> existingTable) {
+		transpositionTable = existingTable;
+	}
 
 	/**
 	 * negamax search with Alpha-beta pruning, all features and full window
