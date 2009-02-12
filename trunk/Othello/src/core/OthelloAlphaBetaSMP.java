@@ -3,12 +3,7 @@
  */
 package core;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Queue;
-import java.util.Random;
-import java.util.Vector;
+import java.util.*;
 import java.util.concurrent.ArrayBlockingQueue;
 
 import edu.rit.pj.ParallelRegion;
@@ -28,21 +23,29 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 	int leafJobsExecuted;
 	int jobsSkipped;
 
+	int sharedTransposeLevel = 3;
+	
 	JobRequest rootJob = null;
 
 	List<OthelloAlphaBeta> localSearches;
 	List<Queue<JobRequest>> localJobs;
 
-	Random rand = new Random();
+	Map<BoardAndDepth, Window> sharedTable;
+
+	Random rand;
 
 	OthelloAlphaBetaSMP(int localTableSize) {
+		this.sharedTable = Collections.synchronizedMap(new HashMap<BoardAndDepth, Window>(10000));
 		this.localTableSize = localTableSize;
 		jobQueue = new ArrayBlockingQueue<JobRequest>(100, true);
+		rand = new Random();
 	}
 
 	OthelloAlphaBetaSMP() {
+		this.sharedTable = Collections.synchronizedMap(new HashMap<BoardAndDepth, Window>(10000));
 		localTableSize = 250000;
 		jobQueue = new ArrayBlockingQueue<JobRequest>(100, true);
+		rand = new Random();
 	}
 
 	protected AlphaBetaJobRequest enqueueAlphaBetaSMP(int alpha, int beta) {
@@ -51,7 +54,105 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 				rootNodeTurn,
 				new Window(alpha, beta));
 		jobQueue.add(job);
+		rootJob = job;
 		return job;
+	}
+	
+	static class SplitTranspositionTable implements Map<BoardAndDepth, Window> {
+		Map<BoardAndDepth, Window> shared;
+		Map<BoardAndDepth, Window> local;
+		int split;
+		
+		SplitTranspositionTable(Map<BoardAndDepth, Window> shared, int split) {
+			this.shared = shared;
+			this.split = split;
+			local = new HashMap<BoardAndDepth, Window>(100000);
+		}
+		
+		@Override
+		public void clear() {
+			// TODO Auto-generated method stub
+			
+		}
+
+		@Override
+		public boolean containsKey(Object arg0) {
+			return shared.containsKey(arg0) || local.containsKey(arg0);
+		}
+
+		@Override
+		public boolean containsValue(Object arg0) {
+			return false;
+		}
+
+		@Override
+		public Set<Entry<BoardAndDepth, Window>> entrySet() {
+			return null;
+		}
+
+		@Override
+		public Window get(Object arg0) {
+			if (arg0 instanceof BoardAndDepth) {
+				BoardAndDepth b = (BoardAndDepth)arg0;
+				
+				if (b.getDepth() > split) {
+					return local.get(b);
+				} else {
+					return shared.get(b);
+				}
+			
+			}
+			
+			return null;
+		}
+
+		@Override
+		public boolean isEmpty() {
+			
+			return false;
+		}
+
+		@Override
+		public Set<BoardAndDepth> keySet() {
+			
+			return null;
+		}
+
+		@Override
+		public Window put(BoardAndDepth arg0, Window arg1) {
+			Window old = get(arg0);
+			if (arg0.getDepth() > split) {
+				local.put(arg0, arg1);
+			} else {
+				shared.put(arg0, arg1);
+			}
+			return old;
+		}
+
+		@Override
+		public void putAll(Map<? extends BoardAndDepth, ? extends Window> arg0) {
+			// TODO Auto-generated method stub
+			
+		}
+
+		@Override
+		public Window remove(Object arg0) {
+			// TODO Auto-generated method stub
+			return null;
+		}
+
+		@Override
+		public int size() {
+			// TODO Auto-generated method stub
+			return 0;
+		}
+
+		@Override
+		public Collection<Window> values() {
+			// TODO Auto-generated method stub
+			return null;
+		}
+		
 	}
 
 	protected class JobRequest {
@@ -62,7 +163,6 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 		boolean complete = false;
 		boolean cancelled = false;
 
-		public void spawnChildJobs() {}
 		public void childCompletionUpdate(JobRequest child) {}
 		public void onExecute(int threadIndex) {}
 		public void executeJob(int threadIndex) {
@@ -282,7 +382,6 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 
 		private void enqueueChildJob(OthelloBitBoard newPosition, int threadIndex) {
 			JobRequest s = new AlphaBetaJobRequest(this, newPosition);
-			rootJob = s;
 			childJobs.add(s);
 			enqueueJob(s, threadIndex);
 		}
@@ -290,7 +389,13 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 		public void onExecute(int threadIndex) {
 			if (checkJobNecessity()) {
 				if ((maxSearchDepth - item.getDepth()) >= sharedSearchDepth) {
-					OthelloAlphaBeta localSearch = localSearches.get(threadIndex);
+					OthelloAlphaBeta localSearch;
+					if (threadIndex == -1){
+						localSearch = new OthelloAlphaBeta(localTableSize);
+					} else {
+						localSearch = localSearches.get(threadIndex);
+					}
+					
 					localSearch.setMaxSearchDepth(maxSearchDepth - sharedSearchDepth);
 					localSearch.setLevelsToSort(levelsToSort - sharedSearchDepth);
 					localSearch.setValueOfDraw(valueOfDraw);
@@ -351,7 +456,7 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 		totalJobsExecuted = 0;
 	}
 
-	private void enqueueJob(JobRequest job, int threadIndex) {
+	protected void enqueueJob(JobRequest job, int threadIndex) {
 		if (threadIndex == -1) {
 			jobQueue.add(job);
 		} else {
@@ -365,15 +470,16 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 		}
 
 		for (int i = localSearches.size(); i < m; ++i) {
-			localSearches.add(new OthelloAlphaBeta(localTableSize));
+			localSearches.add(new OthelloAlphaBeta(
+					new SplitTranspositionTable(sharedTable, maxSearchDepth - sharedTransposeLevel)));
 		}
 	}
 
 	private void prepareLocalJobQueues(int m) {
-		localJobs = Collections.synchronizedList(new ArrayList<Queue<JobRequest>>(m));
+		localJobs = new ArrayList<Queue<JobRequest>>(m);
 
 		for (int i = 0; i < m; ++i) {
-			localJobs.add(new ArrayBlockingQueue<JobRequest>(2000));
+			localJobs.add(new ArrayBlockingQueue<JobRequest>(2000, true));
 		}
 
 		//randomize jobs into local queues
@@ -387,20 +493,22 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 		}
 	}
 
-	private synchronized JobRequest pullJob(List<Queue<JobRequest>> localList, int index) {
-		JobRequest j = localList.get(index).poll();
+	private JobRequest pullJob(List<Queue<JobRequest>> localList, int index) {
+		JobRequest	j = localList.get(index).poll();
+
 		if (j != null) {
 			return j;
 		}
 
 		//else steal a job
-		int size = localList.size();
-		int end = Math.abs( rand.nextInt() ) % size;
-		int start = (end + 1) % size;
-		for (int i = start; i != end; i = ((i+1)%size)) {
+		int end = Math.abs(rand.nextInt()) % localList.size();
+		int start = (end + 1) % localList.size();
+		
+		for (int i = start; i != end; i = ((i+1)% localList.size())) {
 			j = localList.get(i).poll();
 
 			if (j != null) {
+				System.out.println("Stole job from" + i);
 				return j;
 			}
 		}
@@ -425,16 +533,18 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 	/**
 	 * Parallel execution of the job queue
 	 */
-	public void parallelExecution(int threads) {
+	public void parallelExecution(int threads, int jumpstart) {
 		// Manually adjust the number of threads for ease.
 		try {
 			prepareLocalSearches(threads);
 			prepareLocalJobQueues(threads);
-
+			jumpStart(jumpstart);
+			
 			new ParallelTeam(threads).execute(new ParallelRegion() {
 				public void run() throws Exception {
 					System.out.println( getThreadIndex() + " started" );
-					List<Queue<JobRequest>> localList = new ArrayList<Queue<JobRequest>>(localJobs);
+					List<Queue<JobRequest>> localList = new ArrayList<Queue<JobRequest>>();
+					localList.addAll(localJobs);
 
 					while (!(rootJob.complete || rootJob.cancelled)) {
 						JobRequest j = pullJob(localList, getThreadIndex());
@@ -448,7 +558,6 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 				}
 			});
 		} catch (Exception e) {
-			e.printStackTrace();
 			System.exit(1);
 		}
 	}
@@ -456,7 +565,7 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 	/**
 	 * Prime the queue by processing one job to create more jobs
 	 */
-	public void jumpStart(int n) {
+	protected void jumpStart(int n) {
 		prepareLocalSearches(1);
 
 		for (int i = 0; i < n && !jobQueue.isEmpty(); ++i) {
@@ -482,12 +591,7 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 
 		AlphaBetaJobRequest job = testObj.enqueueAlphaBetaSMP(LOWESTSCORE, HIGHESTSCORE);
 
-		// Jump Start
-		System.out.println("Before Jump Start");
-		testObj.jumpStart(1);
-		System.out.println("After Jump Start");
-
-		testObj.parallelExecution(2);
+		testObj.parallelExecution(2, 1);
 
 		System.out.println("score: " + job.bestScore);
 

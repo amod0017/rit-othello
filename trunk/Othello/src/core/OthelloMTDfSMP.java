@@ -34,6 +34,7 @@ public class OthelloMTDfSMP extends OthelloAlphaBetaSMP {
 		
 		int guess;
 		int nullWindow;
+		int threadIndex = -1;
 
 		public MTDfJobRequest(OthelloBitBoard position, int depth, int turn, int guess) {
 			item = new BoardAndDepth(position, depth, turn);
@@ -49,7 +50,7 @@ public class OthelloMTDfSMP extends OthelloAlphaBetaSMP {
 			searchWindow = new Window();
 		}
 
-		public void childCompletionUpdate(JobRequest child) {
+		public synchronized void childCompletionUpdate(JobRequest child) {
 			if (complete) {
 				System.out.println("Warning: Parent was was already complete...");
 				return;
@@ -71,7 +72,7 @@ public class OthelloMTDfSMP extends OthelloAlphaBetaSMP {
 				if (searchWindow.alpha >= searchWindow.beta) {
 					reportJobComplete();
 				} else {
-					spawnChildJobs();
+					spawnChildJobs(this.threadIndex);
 				}
 			}
 		}
@@ -92,7 +93,7 @@ public class OthelloMTDfSMP extends OthelloAlphaBetaSMP {
 			complete = true;
 		}
 
-		public void spawnChildJobs() {
+		public void spawnChildJobs(int threadIndex) {
 			if (cancelled || complete) {
 				System.out.println("cancelled: " + cancelled + "  complete: " + complete);
 				return;
@@ -112,11 +113,27 @@ public class OthelloMTDfSMP extends OthelloAlphaBetaSMP {
 			//null window search about the guess
 			JobRequest s = new AlphaBetaJobRequest(this, item, nullWindow);
 			childJobs.add(s);
-			jobQueue.add(s);
+			int nextIndex = -1;
+			
+			for (int i = 0; i < localSearches.size(); ++i) {
+				for (int j = 0; j < 3; ++j) {
+					BoardAndDepth item2 = new BoardAndDepth(item, j, item.getTurn());
+					Window w = localSearches.get(i).transpositionTable.get(item2);
+					if (w != null) {
+						nextIndex = i;
+					}
+				}
+			}
+			
+			if (nextIndex == -1) {	
+				nextIndex = Math.abs(rand.nextInt()) % localSearches.size();
+			}
+			enqueueJob(s, nextIndex);
 		}
 		
 		public void onExecute(int threadIndex) {
-			spawnChildJobs();
+			this.threadIndex = threadIndex;
+			spawnChildJobs(threadIndex);
 		}
 		
 		public void updateChildWindow(Window window) {
@@ -140,7 +157,7 @@ public class OthelloMTDfSMP extends OthelloAlphaBetaSMP {
 			}
 		}
 
-		public void childCompletionUpdate(JobRequest child) {
+		public synchronized void childCompletionUpdate(JobRequest child) {
 			if (complete) {
 				System.out.println("Warning: Parent was was already complete...");
 				return;
@@ -156,7 +173,7 @@ public class OthelloMTDfSMP extends OthelloAlphaBetaSMP {
 					reportJobComplete();
 				} else {
 					nextSearchDepth += 2;
-					spawnChildJobs();
+					spawnChildJobs(Math.abs(rand.nextInt()) % localSearches.size());
 				}
 			}
 		}
@@ -177,7 +194,7 @@ public class OthelloMTDfSMP extends OthelloAlphaBetaSMP {
 			complete = true;
 		}
 
-		public void spawnChildJobs() {
+		public void spawnChildJobs(int threadIndex) {
 			if (cancelled || complete) {
 				System.out.println("cancelled: " + cancelled + "  complete: " + complete);
 				return;
@@ -188,11 +205,11 @@ public class OthelloMTDfSMP extends OthelloAlphaBetaSMP {
 			BoardAndDepth nextItem = new BoardAndDepth(item, nextSearchDepth, item.getTurn());
 			JobRequest s = new MTDfJobRequest(this, nextItem, guess);
 			childJobs.add(s);
-			jobQueue.add(s);
+			enqueueJob(s, Math.abs(rand.nextInt()) % localSearches.size());
 		}
 		
 		public void onExecute(int threadIndex) {
-			spawnChildJobs();
+			spawnChildJobs(threadIndex);
 		}
 	}
 	
@@ -234,20 +251,15 @@ public class OthelloMTDfSMP extends OthelloAlphaBetaSMP {
 		OthelloBitBoard test1 = new OthelloBitBoard(0x0000002C14000000L, 0x0000381028040000L);
  
 		OthelloMTDfSMP testObj = new OthelloMTDfSMP();
-		testObj.setMaxSearchDepth(10);
+		testObj.setMaxSearchDepth(11);
 		testObj.setLevelsToSort(4);
 		testObj.setRootNode(test1, WHITE);
-		testObj.setSharedSearchDepth(0);
+		testObj.setSharedSearchDepth(1);
 
-		MTDfJobRequest job = testObj.enqueueMTDfSMP(0);
-		//IterativeMTDfJobRequest job = testObj.enqueueIterativeMTDfSMP(0);
+		//MTDfJobRequest job = testObj.enqueueMTDfSMP(0);
+		IterativeMTDfJobRequest job = testObj.enqueueIterativeMTDfSMP(0);
 
-		// Jump Start
-		System.out.println("Before Jump Start");
-		testObj.jumpStart(2);
-		System.out.println("After Jump Start");
-
-		testObj.parallelExecution(2);
+		testObj.parallelExecution(2, 1);
 
 		System.out.println("score: " + job.guess);
 
