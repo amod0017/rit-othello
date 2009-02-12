@@ -193,6 +193,7 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 		Window searchWindow;
 
 		int bestScore;
+		protected int threadUsed = -1;
 
 		public AlphaBetaJobRequest(OthelloBitBoard position, int depth, int turn, Window window) {
 			item = new BoardAndDepth(position, depth, turn);
@@ -387,6 +388,8 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 		}
 
 		public void onExecute(int threadIndex) {
+			threadUsed = threadIndex;
+			
 			if (checkJobNecessity()) {
 				if ((maxSearchDepth - item.getDepth()) >= sharedSearchDepth) {
 					OthelloAlphaBeta localSearch;
@@ -585,7 +588,7 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 		OthelloBitBoard test1 = new OthelloBitBoard(0x0000002C14000000L, 0x0000381028040000L);
 
 		OthelloAlphaBetaSMP testObj = new OthelloAlphaBetaSMP();
-		testObj.setMaxSearchDepth(10);
+		testObj.setMaxSearchDepth(11);
 		testObj.setLevelsToSort(4);
 		testObj.setRootNode(test1, WHITE);
 

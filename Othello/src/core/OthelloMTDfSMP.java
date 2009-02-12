@@ -3,21 +3,22 @@
  */
 package core;
 
-import java.util.Vector;
+import java.util.*;
 
 /**
  * 
  * @author Nicholas Ver Hoeve
  */
 public class OthelloMTDfSMP extends OthelloAlphaBetaSMP {
-	
 	int passes = 0;
+	Map<OthelloBitBoard, Integer> threadAssignments;
 	
 	/**
 	 * @param localTableSize
 	 */
 	public OthelloMTDfSMP(int localTableSize) {
 		super(localTableSize);
+		threadAssignments = new HashMap<OthelloBitBoard, Integer>();
 		// TODO Auto-generated constructor stub
 	}
 
@@ -26,6 +27,7 @@ public class OthelloMTDfSMP extends OthelloAlphaBetaSMP {
 	 */
 	public OthelloMTDfSMP() {
 		super();
+		threadAssignments = new HashMap<OthelloBitBoard, Integer>();
 	}
 	
 	protected class MTDfJobRequest extends JobRequest {
@@ -60,6 +62,8 @@ public class OthelloMTDfSMP extends OthelloAlphaBetaSMP {
 				AlphaBetaJobRequest childNode = (AlphaBetaJobRequest)child;
 				
 				int nullWindow = (guess == searchWindow.alpha) ? guess + 1 : guess;
+				
+				threadAssignments.put(childNode.item, childNode.threadUsed);
 				
 				guess = childNode.getBestScore();
 
@@ -113,19 +117,10 @@ public class OthelloMTDfSMP extends OthelloAlphaBetaSMP {
 			//null window search about the guess
 			JobRequest s = new AlphaBetaJobRequest(this, item, nullWindow);
 			childJobs.add(s);
-			int nextIndex = -1;
 			
-			for (int i = 0; i < localSearches.size(); ++i) {
-				for (int j = 0; j < 3; ++j) {
-					BoardAndDepth item2 = new BoardAndDepth(item, j, item.getTurn());
-					Window w = localSearches.get(i).transpositionTable.get(item2);
-					if (w != null) {
-						nextIndex = i;
-					}
-				}
-			}
-			
-			if (nextIndex == -1) {	
+			Integer nextIndex = threadAssignments.get(item);
+
+			if (nextIndex == null) {	
 				nextIndex = Math.abs(rand.nextInt()) % localSearches.size();
 			}
 			enqueueJob(s, nextIndex);
