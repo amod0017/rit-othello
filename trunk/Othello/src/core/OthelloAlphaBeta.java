@@ -671,7 +671,7 @@ public class OthelloAlphaBeta {
 		//OthelloBitBoard test1 = new OthelloBitBoard(0xFFBFCD5D4D0F07D9L, 0x004002829210C824L);
 		
 		OthelloAlphaBeta testObj = new OthelloAlphaBeta();
-		testObj.setMaxSearchDepth(10);
+		testObj.setMaxSearchDepth(11);
 		testObj.setLevelsToSort(3);
 		testObj.setRootNode(test1, WHITE);
 

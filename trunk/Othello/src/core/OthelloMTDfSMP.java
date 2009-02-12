@@ -146,8 +146,8 @@ public class OthelloMTDfSMP extends OthelloAlphaBetaSMP {
 			item = new BoardAndDepth(position, depth, turn);
 			parentJob = null;
 			this.guess = guess;
-			nextSearchDepth = sharedSearchDepth;
-			if ((depth & 1) != (sharedSearchDepth & 1)) {
+			nextSearchDepth = sharedSearchDepth + 1;
+			if ((depth & 1) != (nextSearchDepth & 1)) {
 				++nextSearchDepth; //match evenndess / oddness
 			}
 		}
@@ -246,10 +246,10 @@ public class OthelloMTDfSMP extends OthelloAlphaBetaSMP {
 		OthelloBitBoard test1 = new OthelloBitBoard(0x0000002C14000000L, 0x0000381028040000L);
  
 		OthelloMTDfSMP testObj = new OthelloMTDfSMP();
-		testObj.setMaxSearchDepth(11);
+		testObj.setMaxSearchDepth(13);
 		testObj.setLevelsToSort(4);
 		testObj.setRootNode(test1, WHITE);
-		testObj.setSharedSearchDepth(1);
+		testObj.setSharedSearchDepth(2);
 
 		//MTDfJobRequest job = testObj.enqueueMTDfSMP(0);
 		IterativeMTDfJobRequest job = testObj.enqueueIterativeMTDfSMP(0);
