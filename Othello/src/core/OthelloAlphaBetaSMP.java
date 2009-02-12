@@ -16,7 +16,7 @@ import edu.rit.pj.ParallelTeam;
 public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 	Queue<JobRequest> jobQueue;
 
-	int sharedSearchDepth = 1;
+	int sharedSearchDepth = 2;
 	int localTableSize;
 
 	int totalJobsExecuted;
@@ -29,23 +29,22 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 
 	List<OthelloAlphaBeta> localSearches;
 	List<Queue<JobRequest>> localJobs;
-
-	Map<BoardAndDepth, Window> sharedTable;
-
 	Random rand;
 
 	OthelloAlphaBetaSMP(int localTableSize) {
-		this.sharedTable = Collections.synchronizedMap(new HashMap<BoardAndDepth, Window>(10000));
+		super();
 		this.localTableSize = localTableSize;
 		jobQueue = new ArrayBlockingQueue<JobRequest>(100, true);
 		rand = new Random();
+		transpositionTable = Collections.synchronizedMap(transpositionTable);
 	}
 
 	OthelloAlphaBetaSMP() {
-		this.sharedTable = Collections.synchronizedMap(new HashMap<BoardAndDepth, Window>(10000));
+		super();
 		localTableSize = 250000;
 		jobQueue = new ArrayBlockingQueue<JobRequest>(100, true);
 		rand = new Random();
+		transpositionTable = Collections.synchronizedMap(transpositionTable);
 	}
 
 	protected AlphaBetaJobRequest enqueueAlphaBetaSMP(int alpha, int beta) {
@@ -399,16 +398,12 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 						localSearch = localSearches.get(threadIndex);
 					}
 					
-					localSearch.setMaxSearchDepth(maxSearchDepth - sharedSearchDepth);
-					localSearch.setLevelsToSort(levelsToSort - sharedSearchDepth);
-					localSearch.setValueOfDraw(valueOfDraw);
 					localSearch.setRootNode(item, item.getTurn());
-					localSearch.setMinDepthToStore(3);
 
 					//bulk of slowness that is meant to run in parallel
 					int score = localSearch.alphaBetaSearch(searchWindow.alpha, searchWindow.beta);
-					System.out.println("Window [" + searchWindow.alpha + ", " + searchWindow.beta + "] = " + score);
-					System.out.println("leaves:" + getLeafCount());
+					//System.out.println("Window [" + searchWindow.alpha + ", " + searchWindow.beta + "] = " + score);
+					//System.out.println("leaves:" + getLeafCount());
 
 					//stats tracking (maybe switch off for parallel performance)
 					leafCount += localSearch.getLeafCount();
@@ -424,6 +419,9 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 		}
 
 		public void updateChildWindow(Window window) {
+			if (parentJob != null && (parentJob instanceof AlphaBetaJobRequest)) {
+				((AlphaBetaJobRequest)parentJob).updateChildWindow(searchWindow);
+			}
 			window.alpha = Math.max(-searchWindow.beta, window.alpha);
 			window.beta = Math.min(-Math.max(bestScore, searchWindow.alpha), window.beta);
 		}
@@ -473,8 +471,15 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 		}
 
 		for (int i = localSearches.size(); i < m; ++i) {
-			localSearches.add(new OthelloAlphaBeta(
-					new SplitTranspositionTable(sharedTable, maxSearchDepth - sharedTransposeLevel)));
+			OthelloAlphaBeta localSearch = new OthelloAlphaBeta(
+					new SplitTranspositionTable(transpositionTable, maxSearchDepth - sharedTransposeLevel));
+			
+			localSearch.setMaxSearchDepth(maxSearchDepth - sharedSearchDepth);
+			localSearch.setLevelsToSort(levelsToSort - sharedSearchDepth);
+			localSearch.setValueOfDraw(valueOfDraw);
+			localSearch.setMinDepthToStore(3);
+			
+			localSearches.add(localSearch);
 		}
 	}
 
@@ -486,11 +491,13 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 		}
 
 		//randomize jobs into local queues
+		int counter = 0;
 		while(!jobQueue.isEmpty()) {
 			JobRequest j = jobQueue.poll();
 
 			if (j != null) {
-				int index = Math.abs(rand.nextInt()) % m;
+				counter++;
+				int index = counter % m;
 				localJobs.get(index).add(j);
 			}
 		}
@@ -528,7 +535,9 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 
 			if (j != null) {
 				j.executeJob(threadIndex);
-				++totalJobsExecuted;
+				if (j.complete) {
+					++totalJobsExecuted;
+				}
 			}
 		}
 	}
@@ -554,7 +563,9 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 
 						if (j != null) {
 							j.executeJob(getThreadIndex());
-							++totalJobsExecuted;
+							if (j.complete) {
+								++totalJobsExecuted;
+							}
 						}
 					}
 					System.out.println( getThreadIndex() + " says its done");
@@ -588,9 +599,10 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 		OthelloBitBoard test1 = new OthelloBitBoard(0x0000002C14000000L, 0x0000381028040000L);
 
 		OthelloAlphaBetaSMP testObj = new OthelloAlphaBetaSMP();
-		testObj.setMaxSearchDepth(11);
+		testObj.setMaxSearchDepth(12);
 		testObj.setLevelsToSort(4);
 		testObj.setRootNode(test1, WHITE);
+		testObj.setSharedSearchDepth(2);
 
 		AlphaBetaJobRequest job = testObj.enqueueAlphaBetaSMP(LOWESTSCORE, HIGHESTSCORE);
 
