@@ -115,7 +115,7 @@ public class OthelloMTDfSMP extends OthelloAlphaBetaSMP {
 			jobQueue.add(s);
 		}
 		
-		public void onExecute() {
+		public void onExecute(int threadIndex) {
 			spawnChildJobs();
 		}
 		
@@ -191,7 +191,7 @@ public class OthelloMTDfSMP extends OthelloAlphaBetaSMP {
 			jobQueue.add(s);
 		}
 		
-		public void onExecute() {
+		public void onExecute(int threadIndex) {
 			spawnChildJobs();
 		}
 	}
@@ -208,6 +208,7 @@ public class OthelloMTDfSMP extends OthelloAlphaBetaSMP {
 				rootNodeTurn,
 				guess);
 		jobQueue.add(job);
+		rootJob = job;
 		return job;
 	}
 	
@@ -217,6 +218,7 @@ public class OthelloMTDfSMP extends OthelloAlphaBetaSMP {
 				rootNodeTurn,
 				guess);
 		jobQueue.add(job);
+		rootJob = job;
 		return job;
 	}
 
@@ -242,7 +244,7 @@ public class OthelloMTDfSMP extends OthelloAlphaBetaSMP {
 
 		// Jump Start
 		System.out.println("Before Jump Start");
-		testObj.jumpStart();
+		testObj.jumpStart(2);
 		System.out.println("After Jump Start");
 
 		testObj.parallelExecution(2);
