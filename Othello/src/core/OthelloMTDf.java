@@ -51,7 +51,8 @@ public class OthelloMTDf extends OthelloAlphaBeta {
 
 			//null window search about the guess
 			guess = alphaBetaSearch(nullWindow-1, nullWindow);
-			//System.out.println("Window [" + (nullWindow - 1) + ", " + nullWindow + "] = " + guess);
+			System.out.println("Window [" + (nullWindow - 1) + ", " + nullWindow + "] = " + guess);
+			System.out.println("leaves:" + this.getLeafCount());
 			
 			if (guess < nullWindow) { // if it failed low
 				beta = guess;
@@ -106,7 +107,7 @@ public class OthelloMTDf extends OthelloAlphaBeta {
 		testObj.setMinDepthToStore(4);
 		testObj.setRootNode(test1, WHITE);
 
-		int score = testObj.iterativeMTDf();
+		int score = testObj.searchMTDf();
 		
 		System.out.println("score: " + score);
 		System.out.println("leaf nodes: " + testObj.getLeafCount());
