@@ -27,6 +27,8 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 	int leafJobsExecuted;
 	int jobsSkipped;
 	
+	JobRequest rootJob = null;
+	
 	List<OthelloAlphaBeta> localSearches;
 
 	OthelloAlphaBetaSMP(int localTableSize) {
@@ -63,7 +65,7 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 			started = true;
 			if (!cancelled && !complete) {
 				onExecute(threadIndex);
-				complete = childJobs != null && childJobs.isEmpty();
+				complete = (childJobs == null) || childJobs.isEmpty();
 			}
 		}
 		public void updateChildWindow(Window window) {}
@@ -76,6 +78,8 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 						j.cancelAllChildJobs();
 					}
 				}
+				
+				childJobs.clear();
 			}
 		}
 	};
@@ -274,6 +278,7 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 
 		private void enqueueChildJob(OthelloBitBoard newPosition) {
 			JobRequest s = new AlphaBetaJobRequest(this, newPosition);
+			rootJob = s;
 			childJobs.add(s);
 			jobQueue.add(s);
 		}
@@ -356,9 +361,13 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 	 * Execution of the job queue
 	 */
 	public void executeJobQueue(int threadIndex) {
-		while (!jobQueue.isEmpty()) {
-			jobQueue.poll().executeJob(threadIndex);
-			++totalJobsExecuted;
+		while (!(rootJob.complete || rootJob.cancelled)) {
+			JobRequest j = jobQueue.poll();
+			
+			if (j != null) {
+				j.executeJob(threadIndex);
+				++totalJobsExecuted;
+			}
 		}
 	}
 
@@ -386,11 +395,10 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 	/**
 	 * Prime the queue by processing one job to create more jobs
 	 */
-	public void jumpStart() {
-		if (!jobQueue.isEmpty()) {
-			
-			prepareLocalSearches(1);
-			
+	public void jumpStart(int n) {
+		prepareLocalSearches(1);
+		
+		for (int i = 0; i < n && !jobQueue.isEmpty(); ++i) {
 			jobQueue.poll().executeJob(0);
 			++totalJobsExecuted;
 		}
@@ -415,7 +423,7 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 
 		// Jump Start
 		System.out.println("Before Jump Start");
-		testObj.jumpStart();
+		testObj.jumpStart(1);
 		System.out.println("After Jump Start");
 
 		testObj.parallelExecution(2);
