@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Queue;
+import java.util.Random;
 import java.util.Vector;
 import java.util.concurrent.ArrayBlockingQueue;
 
@@ -30,15 +31,18 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 	JobRequest rootJob = null;
 	
 	List<OthelloAlphaBeta> localSearches;
+	List<Queue<JobRequest>> localJobs;
+	
+	Random rand = new Random();
 
 	OthelloAlphaBetaSMP(int localTableSize) {
 		this.localTableSize = localTableSize;
-		jobQueue = new ArrayBlockingQueue<JobRequest>(4000, true);
+		jobQueue = new ArrayBlockingQueue<JobRequest>(100, true);
 	}
 
 	OthelloAlphaBetaSMP() {
 		localTableSize = 250000;
-		jobQueue = new ArrayBlockingQueue<JobRequest>(4000, true);
+		jobQueue = new ArrayBlockingQueue<JobRequest>(100, true);
 	}
 
 	protected AlphaBetaJobRequest enqueueAlphaBetaSMP(int alpha, int beta) {
@@ -52,7 +56,7 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 
 	protected class JobRequest {
 		JobRequest parentJob;
-		Vector<JobRequest> childJobs;
+		List<JobRequest> childJobs;
 
 		boolean started = false;
 		boolean complete = false;
@@ -165,7 +169,7 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 			return !complete;
 		}
 
-		public void childCompletionUpdate(JobRequest child) {
+		public synchronized void childCompletionUpdate(JobRequest child) {
 			if (complete) {
 				System.out.println("Warning: Parent was was already complete...");
 				return;
@@ -219,14 +223,14 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 			complete = true;
 		}
 
-		public void spawnChildJobs() {
+		public void spawnChildJobs(int threadIndex) {
 			if (cancelled || complete || childJobs != null) {
 				System.out.println("cancelled: " + cancelled + "  complete: " + complete);
 				return;
 			}
 
 			int turn = item.getTurn();
-			childJobs = new Vector<JobRequest>(16);
+			childJobs = Collections.synchronizedList(new Vector<JobRequest>(16));
 
 			Vector<BoardAndWindow> moveList = new Vector<BoardAndWindow>();
 
@@ -261,7 +265,7 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 			if (moveList.isEmpty()) { // if NO move was found...
 				if (item.canMove(turn ^ 1)) {
 					// player loses turn
-					enqueueChildJob(item);
+					enqueueChildJob(item, threadIndex);
 				} else {
 					//end of game
 					reportJobComplete(evaluateEnd(item, turn));
@@ -271,16 +275,16 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 
 				for (BoardAndWindow p : moveList) {
 					//request all child jobs in sorted order
-					enqueueChildJob(p.board);
+					enqueueChildJob(p.board, threadIndex);
 				}
 			}
 		}
 
-		private void enqueueChildJob(OthelloBitBoard newPosition) {
+		private void enqueueChildJob(OthelloBitBoard newPosition, int threadIndex) {
 			JobRequest s = new AlphaBetaJobRequest(this, newPosition);
 			rootJob = s;
 			childJobs.add(s);
-			jobQueue.add(s);
+			enqueueJob(s, threadIndex);
 		}
 
 		public void onExecute(int threadIndex) {
@@ -306,7 +310,7 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 
 					reportJobComplete(score);
 				} else {
-					spawnChildJobs();
+					spawnChildJobs(threadIndex);
 				}
 			}
 		}
@@ -347,6 +351,14 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 		totalJobsExecuted = 0;
 	}
 	
+	private void enqueueJob(JobRequest job, int threadIndex) {
+		if (threadIndex == -1) {
+			jobQueue.add(job);
+		} else {
+			localJobs.get(threadIndex).add(job);
+		}
+	}
+	
 	private void prepareLocalSearches(int m) {
 		if (localSearches == null) {
 			localSearches = new Vector<OthelloAlphaBeta>(1);
@@ -355,6 +367,45 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 		for (int i = localSearches.size(); i < m; ++i) {
 			localSearches.add(new OthelloAlphaBeta(localTableSize));
 		}
+	}
+	
+	private void prepareLocalJobQueues(int m) {
+		localJobs = Collections.synchronizedList(new ArrayList<Queue<JobRequest>>(m));
+		
+		for (int i = 0; i < m; ++i) {
+			localJobs.add(new ArrayBlockingQueue<JobRequest>(2000));
+		}
+
+		//randomize jobs into local queues
+		while(!jobQueue.isEmpty()) {
+			JobRequest j = jobQueue.poll();
+			
+			if (j != null) {
+				int index = Math.abs(rand.nextInt()) % m;
+				localJobs.get(index).add(j);
+			}
+		}
+	}
+	
+	private synchronized JobRequest pullJob(List<Queue<JobRequest>> localList, int index) {
+		JobRequest j = localList.get(index).poll();
+		if (j != null) {
+			return j;
+		}
+		
+		//else steal a job
+		int end = rand.nextInt() % localList.size();
+		int start = (end + 1) % localList.size();
+		
+		for (int i = start; i != end; i = ((i+1)% localList.size())) {
+			j = localList.get(i).poll();
+			
+			if (j != null) {
+				return j;
+			}
+		}
+		
+		return null;
 	}
 
 	/**
@@ -378,11 +429,21 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 		// Manually adjust the number of threads for ease.
 		try {
 			prepareLocalSearches(threads);
+			prepareLocalJobQueues(threads);
 			
 			new ParallelTeam(threads).execute(new ParallelRegion() {
 				public void run() throws Exception {
 					System.out.println( getThreadIndex() + " started" );
-					executeJobQueue(getThreadIndex());
+					List<Queue<JobRequest>> localList = new ArrayList<Queue<JobRequest>>(localJobs);
+					
+					while (!(rootJob.complete || rootJob.cancelled)) {
+						JobRequest j = pullJob(localList, getThreadIndex());
+						
+						if (j != null) {
+							j.executeJob(getThreadIndex());
+							++totalJobsExecuted;
+						}
+					}
 					System.out.println( getThreadIndex() + " says its done");
 				}
 			});
@@ -399,7 +460,7 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 		prepareLocalSearches(1);
 		
 		for (int i = 0; i < n && !jobQueue.isEmpty(); ++i) {
-			jobQueue.poll().executeJob(0);
+			jobQueue.poll().executeJob(-1);
 			++totalJobsExecuted;
 		}
 	}
