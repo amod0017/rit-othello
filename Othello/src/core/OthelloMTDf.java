@@ -102,8 +102,8 @@ public class OthelloMTDf extends OthelloAlphaBeta {
 		//OthelloBitBoard test1 = new OthelloBitBoard(0xFF9F8D1D0D0F07D9L, 0x004002828200C824L);
 		
 		OthelloMTDf testObj = new OthelloMTDf();
-		testObj.setMaxSearchDepth(10);
-		testObj.setLevelsToSort(3);
+		testObj.setMaxSearchDepth(13);
+		testObj.setLevelsToSort(4);
 		testObj.setMinDepthToStore(4);
 		testObj.setRootNode(test1, WHITE);
 

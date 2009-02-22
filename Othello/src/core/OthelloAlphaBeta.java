@@ -28,8 +28,8 @@ public class OthelloAlphaBeta {
 	public static final int BLACK = 1;
 	
 	//counters
-	int leafCount = 0;
-	int nodesSearched = 0;
+	long leafCount = 0;
+	long nodesSearched = 0;
 	int nodesRetrieved = 0;
 	
 	int maxTableEntries = 750000;
@@ -601,11 +601,11 @@ public class OthelloAlphaBeta {
 		return OthelloBitBoard.xyToy(xy);
 	}
 
-	public int getLeafCount() {
+	public long getLeafCount() {
 		return leafCount;
 	}
 
-	public int getNodesSearched() {
+	public long getNodesSearched() {
 		return nodesSearched;
 	}
 	

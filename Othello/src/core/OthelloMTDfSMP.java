@@ -6,6 +6,8 @@ package core;
 import java.util.*;
 
 /**
+ * class containing Multi-threaded parallel MTD(f) and iterative-deepening MTD(f)
+ * algorithms
  * 
  * @author Nicholas Ver Hoeve
  */
@@ -30,14 +32,28 @@ public class OthelloMTDfSMP extends OthelloAlphaBetaSMP {
 		threadAssignments = new HashMap<OthelloBitBoard, Integer>();
 	}
 	
+	/**
+	 * class that represents an MTD(f) job. Will spawn various alpha-beta
+	 * jobs.
+	 * 
+	 * @author Nocholas Ver Hoeve
+	 */
 	protected class MTDfJobRequest extends JobRequest {
 		BoardAndDepth item;
-		Window searchWindow;
+		Window searchWindow; // known window of the score of item
 		
-		int guess;
-		int nullWindow;
-		int threadIndex = -1;
+		int guess; // current guess
+		int nullWindow; // value of the last null-window search
+		int threadIndex = -1; 
 
+		/**
+		 * Construct a new MTDfJobRequest
+		 * 
+		 * @param position
+		 * @param depth
+		 * @param turn
+		 * @param guess
+		 */
 		public MTDfJobRequest(OthelloBitBoard position, int depth, int turn, int guess) {
 			item = new BoardAndDepth(position, depth, turn);
 			searchWindow = new Window();
@@ -45,6 +61,13 @@ public class OthelloMTDfSMP extends OthelloAlphaBetaSMP {
 			this.guess = guess;
 		}
 		
+		/**
+		 * Construct a new MTDfJobRequest from another job
+		 * 
+		 * @param parentJob
+		 * @param item
+		 * @param guess
+		 */
 		public MTDfJobRequest(JobRequest parentJob, BoardAndDepth item, int guess) {
 			this.item = item;	
 			this.parentJob = parentJob;
@@ -52,6 +75,9 @@ public class OthelloMTDfSMP extends OthelloAlphaBetaSMP {
 			searchWindow = new Window();
 		}
 
+		/**
+		 * Whenever a child Job completes, it must call this function.
+		 */
 		public synchronized void childCompletionUpdate(JobRequest child) {
 			if (complete) {
 				System.out.println("Warning: Parent was was already complete...");
@@ -81,6 +107,9 @@ public class OthelloMTDfSMP extends OthelloAlphaBetaSMP {
 			}
 		}
 		
+		/**
+		 * Whenever a child Job completes, it must call this function.
+		 */
 		public synchronized void reportJobComplete() {
 			cancelAllChildJobs();
 			
@@ -97,6 +126,11 @@ public class OthelloMTDfSMP extends OthelloAlphaBetaSMP {
 			complete = true;
 		}
 
+		/**
+		 * spawn all child jobs
+		 * 
+		 * @param threadIndex : preferred thread index to create jobs in
+		 */
 		public void spawnChildJobs(int threadIndex) {
 			if (cancelled || complete) {
 				System.out.println("cancelled: " + cancelled + "  complete: " + complete);
@@ -131,17 +165,34 @@ public class OthelloMTDfSMP extends OthelloAlphaBetaSMP {
 			spawnChildJobs(threadIndex);
 		}
 		
+		/**
+		 * Alpha-Beta jobs as children will call this to inquire about possibly
+		 * shrinking the search window.
+		 */
 		public void updateChildWindow(Window window) {
 			window.alpha = Math.max(searchWindow.alpha, window.alpha);
 			window.beta = Math.min(searchWindow.beta, window.beta);
 		}
 	}
 	
+	/**
+	 * Class that represents an iterative depth-first search job
+	 * 
+	 * @author Nicholas Ver Hoeve
+	 */
 	protected class IterativeMTDfJobRequest extends JobRequest {
-		BoardAndDepth item;		
-		int guess;
-		int nextSearchDepth;
+		BoardAndDepth item; // item to analyze
+		int guess; // current score/ next guess
+		int nextSearchDepth; // next depth to scan
 
+		/**
+		 * Construct a new IterativeMTDfJobRequest
+		 * 
+		 * @param position
+		 * @param depth
+		 * @param turn
+		 * @param guess
+		 */
 		public IterativeMTDfJobRequest(OthelloBitBoard position, int depth, int turn, int guess) {
 			item = new BoardAndDepth(position, depth, turn);
 			parentJob = null;
@@ -152,6 +203,9 @@ public class OthelloMTDfSMP extends OthelloAlphaBetaSMP {
 			}
 		}
 
+		/**
+		 * Whenever a child Job completes, it must call this function.
+		 */
 		public synchronized void childCompletionUpdate(JobRequest child) {
 			if (complete) {
 				System.out.println("Warning: Parent was was already complete...");
@@ -173,6 +227,9 @@ public class OthelloMTDfSMP extends OthelloAlphaBetaSMP {
 			}
 		}
 		
+		/**
+		 * calling this function indicates that the job has finished
+		 */
 		public synchronized void reportJobComplete() {
 			cancelAllChildJobs();
 			
@@ -189,6 +246,11 @@ public class OthelloMTDfSMP extends OthelloAlphaBetaSMP {
 			complete = true;
 		}
 
+		/**
+		 * spawn all child jobs
+		 * 
+		 * @param threadIndex : preferred thread index to create jobs in
+		 */
 		public void spawnChildJobs(int threadIndex) {
 			if (cancelled || complete) {
 				System.out.println("cancelled: " + cancelled + "  complete: " + complete);
@@ -203,6 +265,11 @@ public class OthelloMTDfSMP extends OthelloAlphaBetaSMP {
 			enqueueJob(s, Math.abs(rand.nextInt()) % localSearches.size());
 		}
 		
+		/**
+		 * called when this job is being executed
+		 * 
+		 * @param threadIndex : thread index executing this job
+		 */
 		public void onExecute(int threadIndex) {
 			spawnChildJobs(threadIndex);
 		}
@@ -224,6 +291,13 @@ public class OthelloMTDfSMP extends OthelloAlphaBetaSMP {
 		return job;
 	}
 	
+	
+	/**
+	 * Enqueue an iterative-deepening MTD(f) search job
+	 * 
+	 * @param guess : an initial guess
+	 * @return the root job
+	 */
 	protected IterativeMTDfJobRequest enqueueIterativeMTDfSMP(int guess) {
 		IterativeMTDfJobRequest job = new IterativeMTDfJobRequest(rootNode,
 				maxSearchDepth,
@@ -249,7 +323,7 @@ public class OthelloMTDfSMP extends OthelloAlphaBetaSMP {
 		testObj.setMaxSearchDepth(13);
 		testObj.setLevelsToSort(4);
 		testObj.setRootNode(test1, WHITE);
-		testObj.setSharedSearchDepth(2);
+		testObj.setSharedSearchDepth(1);
 
 		//MTDfJobRequest job = testObj.enqueueMTDfSMP(0);
 		IterativeMTDfJobRequest job = testObj.enqueueIterativeMTDfSMP(0);
