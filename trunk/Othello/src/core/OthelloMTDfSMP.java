@@ -2,9 +2,7 @@
  *
  */
 package core;
-
 import java.util.*;
-
 import edu.rit.pj.ParallelTeam;
 
 /**
@@ -93,7 +91,7 @@ public class OthelloMTDfSMP extends OthelloAlphaBetaSMP {
 
 				threadAssignments.put(childNode.item, childNode.threadUsed);
 
-				guess = childNode.getBestScore();
+				guess = childNode.retreiveScore();
 
 				if (guess < nullWindow) { // if it failed low
 					searchWindow.beta = guess;
@@ -174,6 +172,10 @@ public class OthelloMTDfSMP extends OthelloAlphaBetaSMP {
 		public void updateChildWindow(Window window) {
 			window.alpha = Math.max(searchWindow.alpha, window.alpha);
 			window.beta = Math.min(searchWindow.beta, window.beta);
+		}
+		
+		public int retreiveScore() {
+			return guess;
 		}
 	}
 
@@ -275,6 +277,10 @@ public class OthelloMTDfSMP extends OthelloAlphaBetaSMP {
 		public void onExecute(int threadIndex) {
 			spawnChildJobs(threadIndex);
 		}
+		
+		public int retreiveScore() {
+			return guess;
+		}
 	}
 
 	/**
@@ -315,35 +321,68 @@ public class OthelloMTDfSMP extends OthelloAlphaBetaSMP {
 	 * @param args
 	 */
 	public static void main(String[] args) {
+		if (args.length != 1) {
+			System.out.println("Usage: OthelloAlphaBeta [filename]");
+			return;
+		}
+		
+		//read in initial time
 		long begin = System.currentTimeMillis();
-
-		System.out.println("Parallel MTD(f) search");
-
-		OthelloBitBoard test1 = new OthelloBitBoard(0x0000002C14000000L, 0x0000381028040000L);
-
-		OthelloMTDfSMP testObj = new OthelloMTDfSMP();
-		testObj.setMaxSearchDepth(13);
-		testObj.setLevelsToSort(4);
-		testObj.setRootNode(test1, WHITE);
-		testObj.setSharedSearchDepth(1);
-
-		//MTDfJobRequest job = testObj.enqueueMTDfSMP(0);
-		IterativeMTDfJobRequest job = testObj.enqueueIterativeMTDfSMP(0);
-
-		testObj.parallelExecution(ParallelTeam.getDefaultThreadCount(), 1);
-
-		System.out.println("score: " + job.guess);
-
-		System.out.println("leaf nodes: " + testObj.getLeafCount());
-		System.out.println("non-leaf nodes: " + testObj.getNodesSearched());
-		System.out.println("nodes retreived: " + testObj.getNodesRetreived());
-		System.out.println("table size: " + testObj.transpositionTable.size());
-
-		System.out.println("totalJobsExecuted: " + testObj.getTotalJobsExecuted());
-		System.out.println("leafJobsExecuted: " + testObj.getLeafJobsExecuted());
-		System.out.println("jobsSkipped: " + testObj.getJobsSkipped());
-		System.out.println("mtdf passes: " + testObj.passes);
-
-		System.out.println("time: " + (System.currentTimeMillis() - begin));
+		
+		boolean iterative = true;
+		int guess = 0;
+		
+		System.out.println("MTD(f) search");
+		
+		OthelloMTDfSMP search = new OthelloMTDfSMP();
+		List<String> fileArgs = search.readInputFile(args[0]);
+		if (fileArgs == null) {
+			return;
+		}
+		//read in optional file arguments
+		String t = findSetting(fileArgs, "IterativeMTDF");
+		try {
+			if (t != null) {
+				iterative = Boolean.parseBoolean(t);
+			}
+			t = findSetting(fileArgs, "InitialGuess");
+			if (t != null) {
+				guess = Integer.parseInt(t);
+			}
+			t = findSetting(fileArgs, "SharedSearchDepth");
+			if (t != null) {
+				search.setSharedSearchDepth(Integer.parseInt(t));
+			}
+		} catch (Exception e) {
+			System.out.println("File Argument error");
+		}
+		
+		//do primary search
+		if (iterative) {
+			search.enqueueIterativeMTDfSMP(guess);
+		} else {
+			search.enqueueMTDfSMP(guess);
+		}
+		
+		search.parallelExecution(ParallelTeam.getDefaultThreadCount(), 1);
+		
+		long searchTime = (System.currentTimeMillis() - begin);
+		double leafNodesPerSec = ((double)(search.getLeafCount() * 1000) / (double)searchTime);
+		
+		System.out.println("score: " + search.getSearchScore());
+		System.out.println("leaf nodes: " + search.getLeafCount());
+		System.out.println("non-leaf nodes: " + search.getNodesSearched());
+		System.out.println("Leaf nodes/sec:" + (long)leafNodesPerSec);
+		System.out.println("nodes retreived: " + search.getNodesRetreived());
+		System.out.println("table size: " + search.transpositionTable.size());
+		
+		System.out.println("Search time: " + searchTime);
+		
+		//do re-search to locate the best move. Not part of main search.
+		long r2 = System.currentTimeMillis();
+		int bestMove = search.retreiveBestMove();
+	
+		System.out.println("BestMove: (" + xyTox(bestMove) + ", " + xyToy(bestMove) + ")");
+		System.out.println("re-search time: " + (System.currentTimeMillis() - r2));
 	}
 }

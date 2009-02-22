@@ -206,6 +206,10 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 				childJobs.clear();
 			}
 		}
+		
+		public int retreiveScore() {
+			return NOSCORE;
+		}
 	};
 
 	protected class AlphaBetaJobRequest extends JobRequest {
@@ -499,7 +503,7 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 			window.beta = Math.min(-Math.max(bestScore, searchWindow.alpha), window.beta);
 		}
 
-		public int getBestScore() {
+		public int retreiveScore() {
 			return bestScore;
 		}
 	}
@@ -615,7 +619,7 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 			j = localList.get(i).poll();
 
 			if (j != null) {
-				System.out.println("Stole job from" + i);
+				//System.out.println("Stole job from" + i);
 				return j;
 			}
 		}
@@ -676,6 +680,8 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 		} catch (Exception e) {
 			System.exit(1);
 		}
+		
+		scoreOfConfiguration = rootJob.retreiveScore();
 	}
 
 	/**
@@ -694,33 +700,71 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 	 * @param args
 	 */
 	public static void main(String[] args) {
+		if (args.length != 1) {
+			System.out.println("Usage: OthelloAlphaBeta [filename]");
+			return;
+		}
+		
+		//read in initial time
 		long begin = System.currentTimeMillis();
+		
+		System.out.println("Parallel Alpha-Beta search");
+		
+		OthelloAlphaBetaSMP search = new OthelloAlphaBetaSMP();
+		List<String> fileArgs = search.readInputFile(args[0]);
+		if (fileArgs == null) {
+			return;
+		}
+		int alpha = LOWESTSCORE;
+		int beta = HIGHESTSCORE;
+		
+		//read in optional file arguments
+		String t = findSetting(fileArgs, "alpha");
+		try {
+			if (t != null) {
+				alpha = Integer.parseInt(t);
+			}
+			t = findSetting(fileArgs, "beta");
+			if (t != null) {
+				beta = Integer.parseInt(t);
+			}
+			t = findSetting(fileArgs, "MaxTableSize");
+			if (t != null) {
+				search.initTranspositionTable(Integer.parseInt(t));
+			}
+		} catch (NumberFormatException e) {
+			System.out.println("File Argument error");
+		}
+		
+		//do primary search
+		AlphaBetaJobRequest job = search.enqueueAlphaBetaSMP(alpha, beta);
+		search.parallelExecution(ParallelTeam.getDefaultThreadCount(), 1);
+		
+		long searchTime = (System.currentTimeMillis() - begin);
+		double leafNodesPerSec = ((double)(search.getLeafCount() * 1000) / (double)searchTime);
 
-		System.out.println("Alpha-Beta search");
-
-		OthelloBitBoard test1 = new OthelloBitBoard(0x0000002C14000000L, 0x0000381028040000L);
-
-		OthelloAlphaBetaSMP testObj = new OthelloAlphaBetaSMP();
-		testObj.setMaxSearchDepth(11);
-		testObj.setLevelsToSort(4);
-		testObj.setRootNode(test1, WHITE);
-		testObj.setSharedSearchDepth(2);
-
-		AlphaBetaJobRequest job = testObj.enqueueAlphaBetaSMP(LOWESTSCORE, HIGHESTSCORE);
-
-		testObj.parallelExecution(ParallelTeam.getDefaultThreadCount(), 1);
-
-		System.out.println("score: " + job.bestScore);
-
-		System.out.println("leaf nodes: " + testObj.getLeafCount());
-		System.out.println("non-leaf nodes: " + testObj.getNodesSearched());
-		System.out.println("nodes retreived: " + testObj.getNodesRetreived());
-		System.out.println("table size: " + testObj.transpositionTable.size());
-
-		System.out.println("totalJobsExecuted: " + testObj.getTotalJobsExecuted());
-		System.out.println("leafJobsExecuted: " + testObj.getLeafJobsExecuted());
-		System.out.println("jobsSkipped: " + testObj.getJobsSkipped());
-
-		System.out.println("time: " + (System.currentTimeMillis() - begin));
+		int score = search.getSearchScore();
+		
+		System.out.println("score: " + score);
+		System.out.println("leaf nodes: " + search.getLeafCount());
+		System.out.println("non-leaf nodes: " + search.getNodesSearched());
+		System.out.println("Leaf nodes/sec:" + (long)leafNodesPerSec);
+		System.out.println("nodes retreived: " + search.getNodesRetreived());
+		System.out.println("table size: " + search.transpositionTable.size());
+		
+		System.out.println("totalJobsExecuted: " + search.getTotalJobsExecuted());
+		System.out.println("leafJobsExecuted: " + search.getLeafJobsExecuted());
+		System.out.println("jobsSkipped: " + search.getJobsSkipped());
+		
+		System.out.println("Search time: " + searchTime);
+		
+		//do re-search to locate the best move. Not part of main search.
+		if (alpha < score && score < beta) {
+			long r2 = System.currentTimeMillis();
+			int bestMove = search.retreiveBestMove();
+		
+			System.out.println("BestMove: (" + xyTox(bestMove) + ", " + xyToy(bestMove) + ")");
+			System.out.println("re-search time: " + (System.currentTimeMillis() - r2));
+		}
 	}
 }
