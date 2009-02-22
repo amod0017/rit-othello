@@ -5,11 +5,13 @@ package core;
 
 import java.util.*;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 import edu.rit.pj.ParallelRegion;
 import edu.rit.pj.ParallelTeam;
 
 /**
+ * Class containing a parallel implementation of the Alpha=Beta Algorithm
  *
  * @author Nicholas Ver Hoeve
  */
@@ -31,6 +33,9 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 	List<Queue<JobRequest>> localJobs;
 	Random rand;
 
+	/**
+	 * Construct a new OthelloAlphaBetaSMP object with custom local table size
+	 */
 	OthelloAlphaBetaSMP(int localTableSize) {
 		super();
 		this.localTableSize = localTableSize;
@@ -39,6 +44,9 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 		transpositionTable = Collections.synchronizedMap(transpositionTable);
 	}
 
+	/**
+	 * Construct a new OthelloAlphaBetaSMP object
+	 */
 	OthelloAlphaBetaSMP() {
 		super();
 		localTableSize = 250000;
@@ -47,6 +55,13 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 		transpositionTable = Collections.synchronizedMap(transpositionTable);
 	}
 
+	/**
+	 * enqueue a new alpha-beta job request
+	 * 
+	 * @param alpha
+	 * @param beta
+	 * @return the root job
+	 */
 	protected AlphaBetaJobRequest enqueueAlphaBetaSMP(int alpha, int beta) {
 		AlphaBetaJobRequest job = new AlphaBetaJobRequest(rootNode,
 				maxSearchDepth,
@@ -57,10 +72,17 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 		return job;
 	}
 	
+	/**
+	 * Special transposition table class. This is a map, but it is only partially
+	 * functional. It is designed to be "tiered", where top level nodes are shared in
+	 * a global map, while near-leaf nodes are local to the thread.
+	 * 
+	 * @author Nicholas Ver Hoeve
+	 */
 	static class SplitTranspositionTable implements Map<BoardAndDepth, Window> {
 		Map<BoardAndDepth, Window> shared;
 		Map<BoardAndDepth, Window> local;
-		int split;
+		int split; // level in the tree in which we switch to 'local' table
 		
 		SplitTranspositionTable(Map<BoardAndDepth, Window> shared, int split) {
 			this.shared = shared;
@@ -70,8 +92,8 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 		
 		@Override
 		public void clear() {
-			// TODO Auto-generated method stub
-			
+			shared.clear();
+			local.clear();
 		}
 
 		@Override
@@ -107,13 +129,12 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 
 		@Override
 		public boolean isEmpty() {
-			
-			return false;
+			return shared.isEmpty() && local.isEmpty();
 		}
 
 		@Override
 		public Set<BoardAndDepth> keySet() {
-			
+			//NOT SUPPORTED
 			return null;
 		}
 
@@ -136,24 +157,28 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 
 		@Override
 		public Window remove(Object arg0) {
-			// TODO Auto-generated method stub
+			//NOT SUPPORTED
 			return null;
 		}
 
 		@Override
 		public int size() {
-			// TODO Auto-generated method stub
-			return 0;
+			return shared.size() + local.size();
 		}
 
 		@Override
 		public Collection<Window> values() {
-			// TODO Auto-generated method stub
+			//NOT SUPPORTED
 			return null;
 		}
 		
 	}
 
+	/**
+	 * Parent job for all job requests
+	 * 
+	 * @author Nicholas Ver Hoeve
+	 */
 	protected class JobRequest {
 		JobRequest parentJob;
 		List<JobRequest> childJobs;
@@ -162,8 +187,13 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 		boolean complete = false;
 		boolean cancelled = false;
 
+		//always called by a child to notify the parent of its completion
 		public void childCompletionUpdate(JobRequest child) {}
+		
+		// always called when the job is executing
 		public void onExecute(int threadIndex) {}
+		
+		//called to also hangle certain other business when executed
 		public void executeJob(int threadIndex) {
 			started = true;
 			if (!cancelled && !complete) {
@@ -171,8 +201,11 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 				complete = (childJobs == null) || childJobs.isEmpty();
 			}
 		}
+		
+		//the child may request a smaller search window
 		public void updateChildWindow(Window window) {}
 
+		//cancel every child job in the queue, recursively if necessary
 		protected void cancelAllChildJobs() {
 			if (childJobs != null) {
 				for (JobRequest j : childJobs) {
@@ -189,11 +222,19 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 
 	protected class AlphaBetaJobRequest extends JobRequest {
 		BoardAndDepth item;
-		Window searchWindow;
+		Window searchWindow; // possible score window of item
 
 		int bestScore;
-		protected int threadUsed = -1;
+		protected int threadUsed = -1; // thread used on this job
 
+		/**
+		 * contruct a new AlphaBetaJobRequest
+		 * 
+		 * @param position
+		 * @param depth
+		 * @param turn
+		 * @param window
+		 */
 		public AlphaBetaJobRequest(OthelloBitBoard position, int depth, int turn, Window window) {
 			item = new BoardAndDepth(position, depth, turn);
 			searchWindow = new Window(window);
@@ -201,6 +242,12 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 			init();
 		}
 
+		/**
+		 * contruct a new AlphaBetaJobRequest from a parent job
+		 * 
+		 * @param parent
+		 * @param position
+		 */
 		protected AlphaBetaJobRequest(AlphaBetaJobRequest parent, OthelloBitBoard position) {
 			parentJob = parent;
 			item = new BoardAndDepth(position,
@@ -212,6 +259,12 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 			init();
 		}
 
+		/**
+		 * contruct a new AlphaBetaJobRequest from a parent job
+		 * 
+		 * @param parent
+		 * @param position
+		 */
 		protected AlphaBetaJobRequest(JobRequest parent, BoardAndDepth item, Window window) {
 			parentJob = parent;
 			this.item = item;
@@ -225,6 +278,10 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 			checkJobNecessity();
 		}
 
+		/**
+		 * 
+		 * @return true if job is still worth doing
+		 */
 		public boolean checkJobNecessity() {
 
 			// Look up the chain to see if this is no longer needed
@@ -269,6 +326,9 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 			return !complete;
 		}
 
+		/**
+		 * called by a child job to report that it is complete
+		 */
 		public synchronized void childCompletionUpdate(JobRequest child) {
 			if (complete) {
 				System.out.println("Warning: Parent was was already complete...");
@@ -289,6 +349,11 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 			}
 		}
 
+		/**
+		 * declare this job complete
+		 * 
+		 * @param score : score of the position
+		 */
 		public synchronized void reportJobComplete(int score) {
 			bestScore = score;
 			cancelAllChildJobs();
@@ -323,6 +388,11 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 			complete = true;
 		}
 
+		/**
+		 * create all child jobs of this job.
+		 * 
+		 * @param threadIndex : thread index to create jobs on
+		 */
 		public void spawnChildJobs(int threadIndex) {
 			if (cancelled || complete || childJobs != null) {
 				System.out.println("cancelled: " + cancelled + "  complete: " + complete);
@@ -380,17 +450,28 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 			}
 		}
 
+		/**
+		 * private function for enqueing a child job on a certain thread
+		 * 
+		 * @param newPosition
+		 * @param threadIndex
+		 */
 		private void enqueueChildJob(OthelloBitBoard newPosition, int threadIndex) {
 			JobRequest s = new AlphaBetaJobRequest(this, newPosition);
 			childJobs.add(s);
 			enqueueJob(s, threadIndex);
 		}
 
+		/**
+		 * called upon execution of the job
+		 */
 		public void onExecute(int threadIndex) {
 			threadUsed = threadIndex;
 			
 			if (checkJobNecessity()) {
 				if ((maxSearchDepth - item.getDepth()) >= sharedSearchDepth) {
+					//actually do the sequential search if deep enough down the tree
+					
 					OthelloAlphaBeta localSearch;
 					if (threadIndex == -1){
 						localSearch = new OthelloAlphaBeta(localTableSize);
@@ -413,11 +494,15 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 
 					reportJobComplete(score);
 				} else {
+					//if still shallow in the tree, unroll into more jobs
 					spawnChildJobs(threadIndex);
 				}
 			}
 		}
 
+		/**
+		 * child alpha-beta calls will call this to enquire about an updated smaller window.
+		 */
 		public void updateChildWindow(Window window) {
 			if (parentJob != null && (parentJob instanceof AlphaBetaJobRequest)) {
 				((AlphaBetaJobRequest)parentJob).updateChildWindow(searchWindow);
@@ -457,6 +542,12 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 		totalJobsExecuted = 0;
 	}
 
+	/**
+	 * stick a new job on the queue
+	 * 
+	 * @param job : job to execute
+	 * @param threadIndex :  thread index to use
+	 */
 	protected void enqueueJob(JobRequest job, int threadIndex) {
 		if (threadIndex == -1) {
 			jobQueue.add(job);
@@ -465,6 +556,11 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 		}
 	}
 
+	/**
+	 * prepare the objects that will be used for sequential alpha-beta calls
+	 * 
+	 * @param m : number of objects to prepare
+	 */
 	private void prepareLocalSearches(int m) {
 		if (localSearches == null) {
 			localSearches = new Vector<OthelloAlphaBeta>(1);
@@ -483,11 +579,16 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 		}
 	}
 
+	/**
+	 * prepare m new job queues for m threads
+	 * 
+	 * @param m : number of queues/threads
+	 */
 	private void prepareLocalJobQueues(int m) {
 		localJobs = new ArrayList<Queue<JobRequest>>(m);
 
 		for (int i = 0; i < m; ++i) {
-			localJobs.add(new ArrayBlockingQueue<JobRequest>(2000, true));
+			localJobs.add(new LinkedBlockingQueue<JobRequest>(2000));
 		}
 
 		//randomize jobs into local queues
@@ -503,6 +604,14 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 		}
 	}
 
+	/**
+	 * retreive a job from the provided list at thread <index>
+	 * if no jobs are available, then steal a job.
+	 * 
+	 * @param localList : list of job queues
+	 * @param index : current thread index
+	 * @return a new job to execute
+	 */
 	private JobRequest pullJob(List<Queue<JobRequest>> localList, int index) {
 		JobRequest	j = localList.get(index).poll();
 
@@ -528,6 +637,8 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 
 	/**
 	 * Execution of the job queue
+	 * 
+	 * @param threadIndex : the index of the thread executing this function
 	 */
 	public void executeJobQueue(int threadIndex) {
 		while (!(rootJob.complete || rootJob.cancelled)) {
@@ -544,6 +655,9 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 
 	/**
 	 * Parallel execution of the job queue
+	 * 
+	 * @param threads: the number of threads to apply
+	 * @param jumpstart: the number of jobs to execute before going parallel
 	 */
 	public void parallelExecution(int threads, int jumpstart) {
 		// Manually adjust the number of threads for ease.
@@ -599,7 +713,7 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 		OthelloBitBoard test1 = new OthelloBitBoard(0x0000002C14000000L, 0x0000381028040000L);
 
 		OthelloAlphaBetaSMP testObj = new OthelloAlphaBetaSMP();
-		testObj.setMaxSearchDepth(12);
+		testObj.setMaxSearchDepth(11);
 		testObj.setLevelsToSort(4);
 		testObj.setRootNode(test1, WHITE);
 		testObj.setSharedSearchDepth(2);
