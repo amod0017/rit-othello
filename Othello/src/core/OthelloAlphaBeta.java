@@ -1,5 +1,10 @@
 package core;
 
+import java.io.BufferedReader;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.*;
 
 /**
@@ -117,15 +122,14 @@ public class OthelloAlphaBeta {
 	 * construct with custom table size
 	 */
 	OthelloAlphaBeta(int maxTableEntries) {
-		this.maxTableEntries = maxTableEntries;
-		transpositionTable = new HashMap<BoardAndDepth, Window>(maxTableEntries / 2, 0.5f);
+		initTranspositionTable(maxTableEntries);
 	}
 	
 	/**
 	 * construct with default table size
 	 */
 	OthelloAlphaBeta() {
-		transpositionTable = new HashMap<BoardAndDepth, Window>(maxTableEntries / 2, 0.5f);
+		initTranspositionTable(maxTableEntries);
 	}
 	
 	/**
@@ -142,7 +146,7 @@ public class OthelloAlphaBeta {
 	 * @return the value of the best score found
 	 */
 	public int alphaBetaSearch() {
-		return scoreOfConfiguration = alphaBetaSearch(LOWESTSCORE, HIGHESTSCORE);
+		return alphaBetaSearch(LOWESTSCORE, HIGHESTSCORE);
 	}
 	
 	/**
@@ -153,16 +157,18 @@ public class OthelloAlphaBeta {
 	 * @param beta : upper bound on the window
 	 * @return the value of the best score found
 	 */
-	protected int alphaBetaSearch(int alpha, int beta) {
+	public int alphaBetaSearch(int alpha, int beta) {
 		if (levelsToSort <= 0) {
 			if (maxSearchDepth <= minDepthToStore) {
-				return alphaBetaNoTable(rootNode, alpha, beta, rootNodeTurn, maxSearchDepth);
+				scoreOfConfiguration = alphaBetaNoTable(rootNode, alpha, beta, rootNodeTurn, maxSearchDepth);
 			} else {
-				return alphaBetaNoSort(rootNode, alpha, beta, rootNodeTurn, maxSearchDepth);
+				scoreOfConfiguration = alphaBetaNoSort(rootNode, alpha, beta, rootNodeTurn, maxSearchDepth);
 			}
 		} else {
-			return alphaBetaSorted(rootNode, alpha, beta, rootNodeTurn, maxSearchDepth);
+			scoreOfConfiguration = alphaBetaSorted(rootNode, alpha, beta, rootNodeTurn, maxSearchDepth);
 		}
+		
+		return scoreOfConfiguration;
 	}
 	
 	/**
@@ -657,6 +663,143 @@ public class OthelloAlphaBeta {
 		rootNodeTurn = turn;
 		scoreOfConfiguration = NOSCORE;
 	}
+	
+	public void initTranspositionTable(int maxTableEntries) {
+		this.maxTableEntries = maxTableEntries;
+		transpositionTable = new HashMap<BoardAndDepth, Window>(maxTableEntries / 2, 0.5f);
+	}
+	
+	/**
+	 * 
+	 * @return the score of the last search
+	 */
+	public int getSearchScore() {
+		return scoreOfConfiguration;
+	}
+
+	/**
+	 * find ht e string value of a setting, if it exists in a list of arguments
+	 * 
+	 * @param args : list of arguments
+	 * @param name : name of the parameter we are looking for
+	 * @return value of the parameter
+	 */
+	public static String findSetting(List<String> args, String name) {
+		for (int i = 0; i < args.size(); ++i) {
+			String arg = args.get(i);
+			int t = arg.indexOf('=');
+			
+			if (t != -1) {
+				String argL = arg.substring(0, t).trim();
+				
+				if (argL.compareToIgnoreCase(name) == 0) {
+					String argR = arg.substring(t+1).trim();
+					return argR;
+				}
+			}
+		}
+		
+		return null;
+	}
+	
+	/**
+	 * set up the object based on settings in the file
+	 * 
+	 * @param filename : the file to open
+	 * @return an array of argument strings
+	 */
+	public List<String> readInputFile(String filename) {
+		List<String> args;
+		
+		try {
+			BufferedReader in = new BufferedReader(new InputStreamReader(new FileInputStream(filename)));
+			
+			args = new Vector<String>();
+			
+			String line;
+			
+			while ((line = in.readLine()) != null) {
+				if (line.compareToIgnoreCase("Board:") == 0) {
+					break; // prepare to read board
+				} else {
+					args.add(line);
+				}
+			}
+			OthelloBitBoard newBoard = new OthelloBitBoard();
+			
+			int y = 0;
+			while ((line = in.readLine()) != null && y < 8) {
+				for (int x = 0; x < 8; ++x) {
+					switch (line.charAt(x)) {
+					case 'W':
+					case 'w':
+					case '0':
+						newBoard.setSquare(x, y, WHITE);
+						break;
+					case 'B':
+					case 'b':
+					case '1':
+						newBoard.setSquare(x, y, BLACK);
+						break;
+					default:
+						newBoard.setSquare(x, y, OthelloBitBoard.EMPTY);
+						break;
+					}
+					
+				}
+				++y;
+			}
+			
+			if (y != 8) {
+				if (y == 0) {
+					System.out.println("Must specify a board!");
+				} else {
+					System.out.println("Board must be 8 rows");
+				}
+				return null;
+			}
+			
+			String inputTurn = findSetting(args, "turn");
+			if (inputTurn == null) {
+				System.out.println("Must specify player turn!");
+				return null;
+			} else if (inputTurn.compareToIgnoreCase("black") == 0) {
+				setRootNode(newBoard, BLACK);
+			} else {
+				setRootNode(newBoard, WHITE);
+			}
+			
+			String t = findSetting(args, "MaxSearchDepth");
+			if (t != null) {
+				setMaxSearchDepth(Integer.parseInt(t));
+			}
+			t = findSetting(args, "LevelsToSort");
+			if (t != null) {
+				setMaxSearchDepth(Integer.parseInt(t));
+			}
+			
+			in.close();
+		} catch (IndexOutOfBoundsException e) {
+			System.out.println("Error reading board");
+			return null;
+		} catch (NumberFormatException e) {
+			System.out.println("File Argument error");
+			return null;
+		} catch (FileNotFoundException e) {
+			System.out.println("Input File not found");
+			return null;
+		} catch (SecurityException e) {
+			System.out.println("Security exception");
+			e.printStackTrace();
+			return null;
+		} catch (IOException e) {
+			System.out.println("Error reading file");
+			e.printStackTrace();
+			return null;
+		}
+		
+		return args;
+	}
 
 	/**
 	 * @param args
@@ -664,29 +807,64 @@ public class OthelloAlphaBeta {
 	 * run alpha-beta tests
 	 */
 	public static void main(String[] args) {
+		if (args.length != 1) {
+			System.out.println("Usage: OthelloAlphaBeta [filename]");
+			return;
+		}
+		
+		//read in initial time
 		long begin = System.currentTimeMillis();
-
+		
 		System.out.println("Alpha-Beta search");
-		OthelloBitBoard test1 = new OthelloBitBoard(0x0000002C14000000L, 0x0000381028040000L);
-		//OthelloBitBoard test1 = new OthelloBitBoard(0xFFBFCD5D4D0F07D9L, 0x004002829210C824L);
 		
-		OthelloAlphaBeta testObj = new OthelloAlphaBeta();
-		testObj.setMaxSearchDepth(11);
-		testObj.setLevelsToSort(3);
-		testObj.setRootNode(test1, WHITE);
+		OthelloAlphaBeta search = new OthelloAlphaBeta();
+		List<String> fileArgs = search.readInputFile(args[0]);
+		if (fileArgs == null) {
+			return;
+		}
+		int alpha = LOWESTSCORE;
+		int beta = HIGHESTSCORE;
+		
+		//read in optional file arguments
+		String t = findSetting(fileArgs, "alpha");
+		try {
+			if (t != null) {
+				alpha = Integer.parseInt(t);
+			}
+			t = findSetting(fileArgs, "beta");
+			if (t != null) {
+				beta = Integer.parseInt(t);
+			}
+			t = findSetting(fileArgs, "MaxTableSize");
+			if (t != null) {
+				search.initTranspositionTable(Integer.parseInt(t));
+			}
+		} catch (NumberFormatException e) {
+			System.out.println("File Argument error");
+		}
+		
+		//do primary search
+		int score = search.alphaBetaSearch(alpha, beta);
+		
+		long searchTime = (System.currentTimeMillis() - begin);
+		double leafNodesPerSec = ((double)(search.getLeafCount() * 1000) / (double)searchTime);
 
-		System.out.println("score: " + testObj.alphaBetaSearch(LOWESTSCORE, HIGHESTSCORE));
+		System.out.println("score: " + score);
+		System.out.println("leaf nodes: " + search.getLeafCount());
+		System.out.println("non-leaf nodes: " + search.getNodesSearched());
+		System.out.println("Leaf nodes/sec:" + (long)leafNodesPerSec);
+		System.out.println("nodes retreived: " + search.getNodesRetreived());
+		System.out.println("table size: " + search.transpositionTable.size());
 		
-		long r2 = System.currentTimeMillis();
-		System.out.println("best move " + testObj.retreiveBestMove());
+		System.out.println("Search time: " + searchTime);
 		
+		//do re-search to locate the best move. Not part of main search.
+		if (alpha < score && score < beta) {
+			long r2 = System.currentTimeMillis();
+			int bestMove = search.retreiveBestMove();
 		
-		System.out.println("leaf nodes: " + testObj.getLeafCount());
-		System.out.println("non-leaf nodes: " + testObj.getNodesSearched());
-		System.out.println("nodes retreived: " + testObj.getNodesRetreived());
-		System.out.println("table size: " + testObj.transpositionTable.size());
-		
-		System.out.println("time: " + (System.currentTimeMillis() - begin));
-		System.out.println("re-search time: " + (System.currentTimeMillis() - r2));
+			System.out.println("BestMove: (" + xyTox(bestMove) + ", " + xyToy(bestMove) + ")");
+			System.out.println("re-search time: " + (System.currentTimeMillis() - r2));
+		}
 	}
 }

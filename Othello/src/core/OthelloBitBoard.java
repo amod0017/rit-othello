@@ -39,7 +39,7 @@ public class OthelloBitBoard implements OthelloBoard {
 		this.white = white;
 		this.black = black;
 	}
-	
+
 	/**
 	 * Copy an OthelloBitBoard
 	 * 
@@ -507,7 +507,7 @@ public class OthelloBitBoard implements OthelloBoard {
 	public String toString() {
 		return "[" + Long.toHexString(white) + ", " + Long.toHexString(black) + "]";
 	}
-
+	
 	/**
 	 * test-drive the bitboard engine
 	 * 
