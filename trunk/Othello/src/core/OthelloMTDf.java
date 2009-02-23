@@ -56,8 +56,11 @@ public class OthelloMTDf extends OthelloAlphaBeta {
 
 			//null window search about the guess
 			guess = alphaBetaSearch(nullWindow-1, nullWindow);
+			if (displayToConsole)
+			{
 			System.out.println("Window [" + (nullWindow - 1) + ", " + nullWindow + "] = " + guess);
 			System.out.println("leaves:" + this.getLeafCount());
+			}
 
 			if (guess < nullWindow) { // if it failed low
 				beta = guess;
@@ -118,6 +121,7 @@ public class OthelloMTDf extends OthelloAlphaBeta {
 
 		boolean iterative = true;
 		int guess = 0;
+		boolean reSearch = false;
 
 		System.out.println("MTD(f) search");
 
@@ -135,6 +139,10 @@ public class OthelloMTDf extends OthelloAlphaBeta {
 			t = findSetting(fileArgs, "InitialGuess");
 			if (t != null) {
 				guess = Integer.parseInt(t);
+			}
+			t = findSetting(fileArgs, "ShowMove");
+			if (t != null) {
+				reSearch = Boolean.parseBoolean(t);
 			}
 		} catch (Exception e) {
 			System.out.println("File Argument error");
@@ -160,11 +168,13 @@ public class OthelloMTDf extends OthelloAlphaBeta {
 
 		System.out.println("Search time: " + searchTime);
 
-		//do re-search to locate the best move. Not part of main search.
-		long r2 = System.currentTimeMillis();
-		int bestMove = search.retreiveBestMove();
+		if (reSearch) {
+			//do re-search to locate the best move. Not part of main search.
+			long r2 = System.currentTimeMillis();
+			int bestMove = search.retreiveBestMove();
 
-		System.out.println("BestMove: (" + xyTox(bestMove) + ", " + xyToy(bestMove) + ")");
-		System.out.println("re-search time: " + (System.currentTimeMillis() - r2));
+			System.out.println("BestMove: (" + xyTox(bestMove) + ", " + xyToy(bestMove) + ")");
+			System.out.println("re-search time: " + (System.currentTimeMillis() - r2));
+		}
 	}
 }
