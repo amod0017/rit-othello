@@ -2,7 +2,10 @@
  *
  */
 package core;
+import java.io.IOException;
 import java.util.*;
+
+import edu.rit.pj.Comm;
 import edu.rit.pj.ParallelTeam;
 
 /**
@@ -173,7 +176,7 @@ public class OthelloMTDfSMP extends OthelloAlphaBetaSMP {
 			window.alpha = Math.max(searchWindow.alpha, window.alpha);
 			window.beta = Math.min(searchWindow.beta, window.beta);
 		}
-		
+
 		public int retreiveScore() {
 			return guess;
 		}
@@ -277,7 +280,7 @@ public class OthelloMTDfSMP extends OthelloAlphaBetaSMP {
 		public void onExecute(int threadIndex) {
 			spawnChildJobs(threadIndex);
 		}
-		
+
 		public int retreiveScore() {
 			return guess;
 		}
@@ -321,19 +324,27 @@ public class OthelloMTDfSMP extends OthelloAlphaBetaSMP {
 	 * @param args
 	 */
 	public static void main(String[] args) {
+
+		// Job Scheduler
+		try {
+			Comm.init(args);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
 		if (args.length != 1) {
 			System.out.println("Usage: OthelloAlphaBeta [filename]");
 			return;
 		}
-		
+
 		//read in initial time
 		long begin = System.currentTimeMillis();
-		
+
 		boolean iterative = true;
 		int guess = 0;
-		
+
 		System.out.println("Parallel MTD(f) search");
-		
+
 		OthelloMTDfSMP search = new OthelloMTDfSMP();
 		List<String> fileArgs = search.readInputFile(args[0]);
 		if (fileArgs == null) {
@@ -360,32 +371,32 @@ public class OthelloMTDfSMP extends OthelloAlphaBetaSMP {
 		} catch (Exception e) {
 			System.out.println("File Argument error");
 		}
-		
+
 		//do primary search
 		if (iterative) {
 			search.enqueueIterativeMTDfSMP(guess);
 		} else {
 			search.enqueueMTDfSMP(guess);
 		}
-		
+
 		search.parallelExecution(ParallelTeam.getDefaultThreadCount(), 1);
-		
+
 		long searchTime = (System.currentTimeMillis() - begin);
 		double leafNodesPerSec = ((double)(search.getLeafCount() * 1000) / (double)searchTime);
-		
+
 		System.out.println("score: " + search.getSearchScore());
 		System.out.println("leaf nodes: " + search.getLeafCount());
 		System.out.println("non-leaf nodes: " + search.getNodesSearched());
 		System.out.println("Leaf nodes/sec:" + (long)leafNodesPerSec);
 		System.out.println("nodes retreived: " + search.getNodesRetreived());
 		System.out.println("table size: " + search.transpositionTable.size());
-		
+
 		System.out.println("Search time: " + searchTime);
-		
+
 		//do re-search to locate the best move. Not part of main search.
 		long r2 = System.currentTimeMillis();
 		int bestMove = search.retreiveBestMove();
-	
+
 		System.out.println("BestMove: (" + xyTox(bestMove) + ", " + xyToy(bestMove) + ")");
 		System.out.println("re-search time: " + (System.currentTimeMillis() - r2));
 	}
