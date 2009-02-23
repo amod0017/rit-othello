@@ -25,7 +25,7 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 	int leafJobsExecuted;
 	int jobsSkipped;
 
-	int sharedTransposeLevel = 3;
+	int sharedTableLevel = 3;
 
 	JobRequest rootJob = null;
 
@@ -192,6 +192,8 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 
 		//the child may request a smaller search window
 		public void updateChildWindow(Window window) {}
+		
+		public boolean checkJobNecessity() { return true; }
 
 		//cancel every child job in the queue, recursively if necessary
 		protected void cancelAllChildJobs() {
@@ -231,7 +233,6 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 			item = new BoardAndDepth(position, depth, turn);
 			searchWindow = new Window(window);
 			parentJob = null;
-			init();
 		}
 
 		/**
@@ -248,7 +249,7 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 
 			searchWindow = new Window();
 			parent.updateChildWindow(searchWindow);
-			init();
+			bestScore = NOSCORE;
 		}
 
 		/**
@@ -262,12 +263,7 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 			this.item = item;
 			searchWindow = window;
 			parent.updateChildWindow(searchWindow);
-			init();
-		}
-
-		private void init() {
 			bestScore = NOSCORE;
-			checkJobNecessity();
 		}
 
 		/**
@@ -281,7 +277,8 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 			for (JobRequest j = parentJob;
 				j != null;
 				j = j.parentJob) {
-				if ( j.cancelled || j.complete ) {
+				if (j.cancelled || j.complete) {
+					cancelled = true;
 					return false;
 				}
 			}
@@ -311,7 +308,7 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 				searchWindow.beta = Math.min(searchWindow.beta, storedWindow.beta);
 			}
 
-			if (searchWindow.alpha == searchWindow.beta) {
+			if (searchWindow.alpha >= searchWindow.beta) {
 				reportJobComplete(searchWindow.alpha); // result is already known
 			}
 
@@ -324,6 +321,9 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 		public synchronized void childCompletionUpdate(JobRequest child) {
 			if (complete) {
 				System.out.println("Warning: Parent was was already complete...");
+				if (childJobs.contains(child)) {
+					System.out.println("????");
+				}
 				return;
 			}
 
@@ -338,6 +338,8 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 						childJobs.isEmpty() /*moves exhausted check*/) {
 					reportJobComplete(bestScore);
 				}
+			} else {
+				System.out.println("Warning: Unknown job?");
 			}
 		}
 
@@ -450,8 +452,10 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 		 */
 		private void enqueueChildJob(OthelloBitBoard newPosition, int threadIndex) {
 			JobRequest s = new AlphaBetaJobRequest(this, newPosition);
-			childJobs.add(s);
-			enqueueJob(s, threadIndex);
+			if (s.checkJobNecessity()) {
+				childJobs.add(s);
+				enqueueJob(s, threadIndex);
+			}
 		}
 
 		/**
@@ -520,14 +524,25 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 		return jobsSkipped;
 	}
 
-	public int getSharedSearchDepth() {
-		return sharedSearchDepth;
-	}
-
+	/**
+	 * @param sharedDepth :he number of levels in the tree in which jobs should
+	 *  be placed into the job queue and executed in parallel
+	 */
 	public void setSharedSearchDepth(int sharedDepth) {
 		sharedSearchDepth = sharedDepth;
 	}
+	
+	/**
+	 * @param level : the number of levels in the tree in which to share the
+	 * 	transposition table among all threads
+	 */
+	public void setSharedTableLevel(int level) {
+		sharedTableLevel = level;
+	}
 
+	/**
+	 * reset all counters
+	 */
 	public void resetCounters() {
 		super.resetCounters();
 		leafJobsExecuted = 0;
@@ -541,6 +556,11 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 	 * @param threadIndex :  thread index to use
 	 */
 	protected void enqueueJob(JobRequest job, int threadIndex) {
+		if (job.complete || job.cancelled) {
+			System.out.println("Warning... attempt to add invalid job");
+			return;
+		}
+		
 		if (threadIndex == -1) {
 			jobQueue.add(job);
 		} else {
@@ -560,7 +580,7 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 
 		for (int i = localSearches.size(); i < m; ++i) {
 			OthelloAlphaBeta localSearch = new OthelloAlphaBeta(
-					new SplitTranspositionTable(transpositionTable, maxSearchDepth - sharedTransposeLevel));
+					new SplitTranspositionTable(transpositionTable, maxSearchDepth - sharedTableLevel));
 
 			localSearch.setMaxSearchDepth(maxSearchDepth - sharedSearchDepth);
 			localSearch.setLevelsToSort(levelsToSort - sharedSearchDepth);
@@ -731,6 +751,10 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 			t = findSetting(fileArgs, "MaxTableSize");
 			if (t != null) {
 				search.initTranspositionTable(Integer.parseInt(t));
+			}
+			t = findSetting(fileArgs, "SharedTableLevel");
+			if (t != null) {
+				search.setSharedTableLevel(Integer.parseInt(t));
 			}
 		} catch (NumberFormatException e) {
 			System.out.println("File Argument error");
