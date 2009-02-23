@@ -18,12 +18,10 @@ import java.util.*;
 public class OthelloAlphaBeta {
 	Map<BoardAndDepth, Window> transpositionTable;
 
-	int minDepthToStore = 4;
+	int minDepthToStore = 3;
 	int valueOfDraw = -3;
 	int maxSearchDepth = 12;
 	int levelsToSort = 3;
-	
-	//int maxTableSize = 
 	
 	public static final int NOSCORE = 0x80000000;
 	public static final int LOWESTSCORE = 0x80000001;
@@ -777,6 +775,18 @@ public class OthelloAlphaBeta {
 			if (t != null) {
 				setMaxSearchDepth(Integer.parseInt(t));
 			}
+			t = findSetting(args, "MaxTableSize");
+			if (t != null) {
+				initTranspositionTable(Integer.parseInt(t));
+			}
+			t = findSetting(args, "MinDepthToStore");
+			if (t != null) {
+				setMinDepthToStore(Integer.parseInt(t));
+			}
+			t = findSetting(args, "LevelsToSort");
+			if (t != null) {
+				setLevelsToSort(Integer.parseInt(t));
+			}
 			
 			in.close();
 		} catch (IndexOutOfBoundsException e) {
@@ -834,10 +844,6 @@ public class OthelloAlphaBeta {
 			t = findSetting(fileArgs, "beta");
 			if (t != null) {
 				beta = Integer.parseInt(t);
-			}
-			t = findSetting(fileArgs, "MaxTableSize");
-			if (t != null) {
-				search.initTranspositionTable(Integer.parseInt(t));
 			}
 		} catch (NumberFormatException e) {
 			System.out.println("File Argument error");
