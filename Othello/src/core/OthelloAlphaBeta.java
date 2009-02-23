@@ -9,16 +9,16 @@ import java.util.*;
 
 import edu.rit.pj.Comm;
 
-/**
- *
- */
 
 /**
+ * Class containing the Alpha-Beta search algorithm
  *
  * @author Nicholas Ver Hoeve
  */
 public class OthelloAlphaBeta {
 	Map<BoardAndDepth, Window> transpositionTable;
+	
+	boolean displayToConsole = false;
 
 	int minDepthToStore = 3;
 	int valueOfDraw = -3;
@@ -789,6 +789,10 @@ public class OthelloAlphaBeta {
 			if (t != null) {
 				setLevelsToSort(Integer.parseInt(t));
 			}
+			t = findSetting(args, "DebugOutput");
+			if (t != null) {
+				displayToConsole = Boolean.parseBoolean(t);
+			}
 
 			in.close();
 		} catch (IndexOutOfBoundsException e) {
@@ -834,6 +838,7 @@ public class OthelloAlphaBeta {
 
 		//read in initial time
 		long begin = System.currentTimeMillis();
+		boolean reSearch = false;
 
 		System.out.println("Alpha-Beta search");
 
@@ -855,6 +860,10 @@ public class OthelloAlphaBeta {
 			if (t != null) {
 				beta = Integer.parseInt(t);
 			}
+			t = findSetting(fileArgs, "ShowMove");
+			if (t != null) {
+				reSearch = Boolean.parseBoolean(t);
+			}
 		} catch (NumberFormatException e) {
 			System.out.println("File Argument error");
 		}
@@ -875,7 +884,7 @@ public class OthelloAlphaBeta {
 		System.out.println("Search time: " + searchTime);
 
 		//do re-search to locate the best move. Not part of main search.
-		if (alpha < score && score < beta) {
+		if (reSearch && alpha < score && score < beta) {
 			long r2 = System.currentTimeMillis();
 			int bestMove = search.retreiveBestMove();
 

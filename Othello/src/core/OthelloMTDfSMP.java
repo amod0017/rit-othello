@@ -83,7 +83,10 @@ public class OthelloMTDfSMP extends OthelloAlphaBetaSMP {
 		 */
 		public synchronized void childCompletionUpdate(JobRequest child) {
 			if (complete) {
-				System.out.println("Warning: Parent was was already complete...");
+				if (displayToConsole)
+				{
+					System.out.println("Warning: Parent was was already complete...");
+				}
 				return;
 			}
 
@@ -241,7 +244,10 @@ public class OthelloMTDfSMP extends OthelloAlphaBetaSMP {
 			cancelAllChildJobs();
 
 			if (cancelled) {
-				System.out.println("Job completed after cancellation. Wasted time.");
+				if (displayToConsole)
+				{
+					System.out.println("Job completed after cancellation. Wasted time.");
+				}
 			} else {
 				if (parentJob == null) { //root job is finishing
 
@@ -342,6 +348,7 @@ public class OthelloMTDfSMP extends OthelloAlphaBetaSMP {
 
 		boolean iterative = true;
 		int guess = 0;
+		boolean reSearch = false;
 
 		System.out.println("Parallel MTD(f) search");
 
@@ -368,6 +375,10 @@ public class OthelloMTDfSMP extends OthelloAlphaBetaSMP {
 			if (t != null) {
 				search.setSharedTableLevel(Integer.parseInt(t));
 			}
+			t = findSetting(fileArgs, "ShowMove");
+			if (t != null) {
+				reSearch = Boolean.parseBoolean(t);
+			}
 		} catch (Exception e) {
 			System.out.println("File Argument error");
 		}
@@ -390,14 +401,20 @@ public class OthelloMTDfSMP extends OthelloAlphaBetaSMP {
 		System.out.println("Leaf nodes/sec:" + (long)leafNodesPerSec);
 		System.out.println("nodes retreived: " + search.getNodesRetreived());
 		System.out.println("table size: " + search.transpositionTable.size());
+		
+		System.out.println("totalJobsExecuted: " + search.getTotalJobsExecuted());
+		System.out.println("leafJobsExecuted: " + search.getLeafJobsExecuted());
+		System.out.println("jobsSkipped: " + search.getJobsSkipped());
 
 		System.out.println("Search time: " + searchTime);
 
-		//do re-search to locate the best move. Not part of main search.
-		long r2 = System.currentTimeMillis();
-		int bestMove = search.retreiveBestMove();
-
-		System.out.println("BestMove: (" + xyTox(bestMove) + ", " + xyToy(bestMove) + ")");
-		System.out.println("re-search time: " + (System.currentTimeMillis() - r2));
+		if (reSearch) {
+			//do re-search to locate the best move. Not part of main search.
+			long r2 = System.currentTimeMillis();
+			int bestMove = search.retreiveBestMove();
+	
+			System.out.println("BestMove: (" + xyTox(bestMove) + ", " + xyToy(bestMove) + ")");
+			System.out.println("re-search time: " + (System.currentTimeMillis() - r2));
+		}
 	}
 }

@@ -15,6 +15,7 @@ import edu.rit.pj.ParallelTeam;
 /**
  * Class containing a parallel implementation of the Alpha=Beta Algorithm
  *
+ * @author Joseph Pecoraro
  * @author Nicholas Ver Hoeve
  */
 public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
@@ -323,9 +324,6 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 		public synchronized void childCompletionUpdate(JobRequest child) {
 			if (complete) {
 				System.out.println("Warning: Parent was was already complete...");
-				if (childJobs.contains(child)) {
-					System.out.println("????");
-				}
 				return;
 			}
 
@@ -372,7 +370,10 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 			}
 
 			if (cancelled) {
-				System.out.println("Job completed after cancellation. Wasted time.");
+				if (displayToConsole)
+				{
+					System.out.println("Job completed after cancellation. Wasted time.");
+				}
 			} else {
 				if (parentJob == null) { //root job is finishing
 
@@ -495,6 +496,8 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 					//if still shallow in the tree, unroll into more jobs
 					spawnChildJobs(threadIndex);
 				}
+			} else {
+				++jobsSkipped;
 			}
 		}
 
@@ -683,7 +686,10 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 
 			new ParallelTeam(threads).execute(new ParallelRegion() {
 				public void run() throws Exception {
-					System.out.println( getThreadIndex() + " started" );
+					if (displayToConsole)
+					{
+						System.out.println( getThreadIndex() + " started" );
+					}
 					List<Queue<JobRequest>> localList = new ArrayList<Queue<JobRequest>>();
 					localList.addAll(localJobs);
 
@@ -697,7 +703,10 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 							}
 						}
 					}
-					System.out.println( getThreadIndex() + " says its done");
+					if (displayToConsole)
+					{
+						System.out.println( getThreadIndex() + " says its done");
+					}
 				}
 			});
 		} catch (Exception e) {
@@ -748,6 +757,7 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 		}
 		int alpha = LOWESTSCORE;
 		int beta = HIGHESTSCORE;
+		boolean reSearch = false;
 
 		//read in optional file arguments
 		String t = findSetting(fileArgs, "alpha");
@@ -766,6 +776,10 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 			t = findSetting(fileArgs, "SharedTableLevel");
 			if (t != null) {
 				search.setSharedTableLevel(Integer.parseInt(t));
+			}
+			t = findSetting(fileArgs, "ShowMove");
+			if (t != null) {
+				reSearch = Boolean.parseBoolean(t);
 			}
 		} catch (NumberFormatException e) {
 			System.out.println("File Argument error");
@@ -794,7 +808,7 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 		System.out.println("Search time: " + searchTime);
 
 		//do re-search to locate the best move. Not part of main search.
-		if (alpha < score && score < beta) {
+		if (reSearch && alpha < score && score < beta) {
 			long r2 = System.currentTimeMillis();
 			int bestMove = search.retreiveBestMove();
 
