@@ -332,7 +332,7 @@ public class OthelloMTDfSMP extends OthelloAlphaBetaSMP {
 		boolean iterative = true;
 		int guess = 0;
 		
-		System.out.println("MTD(f) search");
+		System.out.println("Parallel MTD(f) search");
 		
 		OthelloMTDfSMP search = new OthelloMTDfSMP();
 		List<String> fileArgs = search.readInputFile(args[0]);
@@ -352,6 +352,10 @@ public class OthelloMTDfSMP extends OthelloAlphaBetaSMP {
 			t = findSetting(fileArgs, "SharedSearchDepth");
 			if (t != null) {
 				search.setSharedSearchDepth(Integer.parseInt(t));
+			}
+			t = findSetting(fileArgs, "SharedTableLevel");
+			if (t != null) {
+				search.setSharedTableLevel(Integer.parseInt(t));
 			}
 		} catch (Exception e) {
 			System.out.println("File Argument error");

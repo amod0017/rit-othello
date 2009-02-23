@@ -1,0 +1,13 @@
+Turn = white
+SharedSearchDepth = 2
+MaxSearchDepth = 12
+IterativeMTDF = true
+Board:
+________
+________
+___BWB__
+___BB___
+__WWBB__
+___BBW__
+___B____
+________
