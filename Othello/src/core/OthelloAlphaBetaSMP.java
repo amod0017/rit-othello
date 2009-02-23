@@ -27,7 +27,7 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 	int leafJobsExecuted;
 	int jobsSkipped;
 
-	int sharedTableLevel = 3;
+	int sharedTableLevel = 9;
 
 	JobRequest rootJob = null;
 
@@ -114,9 +114,9 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 				BoardAndDepth b = (BoardAndDepth)arg0;
 
 				if (b.getDepth() > split) {
-					return local.get(b);
-				} else {
 					return shared.get(b);
+				} else {
+					return local.get(b);
 				}
 
 			}
@@ -136,9 +136,9 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 		public Window put(BoardAndDepth arg0, Window arg1) {
 			Window old = get(arg0);
 			if (arg0.getDepth() > split) {
-				local.put(arg0, arg1);
-			} else {
 				shared.put(arg0, arg1);
+			} else {
+				local.put(arg0, arg1);
 			}
 			return old;
 		}
@@ -582,7 +582,8 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 
 		for (int i = localSearches.size(); i < m; ++i) {
 			OthelloAlphaBeta localSearch = new OthelloAlphaBeta(
-					new SplitTranspositionTable(transpositionTable, maxSearchDepth - sharedTableLevel));
+					new SplitTranspositionTable(transpositionTable, 
+							maxSearchDepth - sharedTableLevel));
 
 			localSearch.setMaxSearchDepth(maxSearchDepth - sharedSearchDepth);
 			localSearch.setLevelsToSort(levelsToSort - sharedSearchDepth);
