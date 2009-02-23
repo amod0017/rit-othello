@@ -364,7 +364,10 @@ public class OthelloMTDfSMP extends OthelloAlphaBetaSMP {
 			if (t != null) {
 				search.setSharedSearchDepth(Integer.parseInt(t));
 			}
-			
+			t = findSetting(fileArgs, "SharedTableLevel");
+			if (t != null) {
+				search.setSharedTableLevel(Integer.parseInt(t));
+			}
 		} catch (Exception e) {
 			System.out.println("File Argument error");
 		}
