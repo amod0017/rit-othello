@@ -3,10 +3,12 @@
  */
 package core;
 
+import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
+import edu.rit.pj.Comm;
 import edu.rit.pj.ParallelRegion;
 import edu.rit.pj.ParallelTeam;
 
@@ -192,7 +194,7 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 
 		//the child may request a smaller search window
 		public void updateChildWindow(Window window) {}
-		
+
 		public boolean checkJobNecessity() { return true; }
 
 		//cancel every child job in the queue, recursively if necessary
@@ -208,7 +210,7 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 				childJobs.clear();
 			}
 		}
-		
+
 		public int retreiveScore() {
 			return NOSCORE;
 		}
@@ -531,7 +533,7 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 	public void setSharedSearchDepth(int sharedDepth) {
 		sharedSearchDepth = sharedDepth;
 	}
-	
+
 	/**
 	 * @param level : the number of levels in the tree in which to share the
 	 * 	transposition table among all threads
@@ -560,7 +562,7 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 			System.out.println("Warning... attempt to add invalid job");
 			return;
 		}
-		
+
 		if (threadIndex == -1) {
 			jobQueue.add(job);
 		} else {
@@ -700,7 +702,7 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 		} catch (Exception e) {
 			System.exit(1);
 		}
-		
+
 		scoreOfConfiguration = rootJob.retreiveScore();
 	}
 
@@ -720,16 +722,24 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 	 * @param args
 	 */
 	public static void main(String[] args) {
+
+		// Job Scheduler
+		try {
+			Comm.init(args);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
 		if (args.length != 1) {
 			System.out.println("Usage: OthelloAlphaBeta [filename]");
 			return;
 		}
-		
+
 		//read in initial time
 		long begin = System.currentTimeMillis();
-		
+
 		System.out.println("Parallel Alpha-Beta search");
-		
+
 		OthelloAlphaBetaSMP search = new OthelloAlphaBetaSMP();
 		List<String> fileArgs = search.readInputFile(args[0]);
 		if (fileArgs == null) {
@@ -737,7 +747,7 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 		}
 		int alpha = LOWESTSCORE;
 		int beta = HIGHESTSCORE;
-		
+
 		//read in optional file arguments
 		String t = findSetting(fileArgs, "alpha");
 		try {
@@ -759,34 +769,34 @@ public class OthelloAlphaBetaSMP extends OthelloAlphaBeta {
 		} catch (NumberFormatException e) {
 			System.out.println("File Argument error");
 		}
-		
+
 		//do primary search
 		AlphaBetaJobRequest job = search.enqueueAlphaBetaSMP(alpha, beta);
 		search.parallelExecution(ParallelTeam.getDefaultThreadCount(), 1);
-		
+
 		long searchTime = (System.currentTimeMillis() - begin);
 		double leafNodesPerSec = ((double)(search.getLeafCount() * 1000) / (double)searchTime);
 
 		int score = search.getSearchScore();
-		
+
 		System.out.println("score: " + score);
 		System.out.println("leaf nodes: " + search.getLeafCount());
 		System.out.println("non-leaf nodes: " + search.getNodesSearched());
 		System.out.println("Leaf nodes/sec:" + (long)leafNodesPerSec);
 		System.out.println("nodes retreived: " + search.getNodesRetreived());
 		System.out.println("table size: " + search.transpositionTable.size());
-		
+
 		System.out.println("totalJobsExecuted: " + search.getTotalJobsExecuted());
 		System.out.println("leafJobsExecuted: " + search.getLeafJobsExecuted());
 		System.out.println("jobsSkipped: " + search.getJobsSkipped());
-		
+
 		System.out.println("Search time: " + searchTime);
-		
+
 		//do re-search to locate the best move. Not part of main search.
 		if (alpha < score && score < beta) {
 			long r2 = System.currentTimeMillis();
 			int bestMove = search.retreiveBestMove();
-		
+
 			System.out.println("BestMove: (" + xyTox(bestMove) + ", " + xyToy(bestMove) + ")");
 			System.out.println("re-search time: " + (System.currentTimeMillis() - r2));
 		}
